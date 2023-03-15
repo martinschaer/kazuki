@@ -13,6 +13,9 @@ pub async fn run() {
     let context = window.gl();
 
     let mut ignited = false;
+    let mut fps = 0_u32;
+    let mut next_fps_check = 0.0;
+    let mut frames_count = 0_u32;
     let viewport = window.viewport();
     let mut camera = Camera::new_orthographic(
         viewport,
@@ -46,6 +49,12 @@ pub async fn run() {
     let mut gui = three_d::GUI::new(&context);
 
     window.render_loop(move |mut frame_input| {
+        if frame_input.accumulated_time > next_fps_check {
+            next_fps_check += 500.0;
+            fps = frames_count * 2;
+            frames_count = 0;
+        }
+        frames_count += 1;
         gui.update(
             &mut frame_input.events,
             frame_input.accumulated_time,
@@ -64,6 +73,12 @@ pub async fn run() {
                                 .color(Color32::WHITE)
                                 .size(32.0)
                                 .family(FontFamily::Proportional),
+                        );
+                        ui.label(
+                            RichText::new(format!("{} fps", fps))
+                                .color(Color32::WHITE)
+                                .size(10.0)
+                                .family(FontFamily::Monospace),
                         );
                     });
             },
