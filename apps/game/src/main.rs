@@ -17,14 +17,12 @@ pub async fn run() {
     let context = window.gl();
 
     let viewport = window.viewport();
-    // let h = viewport.height;
-    // let w = viewport.width;
     let mut camera = Camera::new_orthographic(
         viewport,
         vec3(0.0, 0.0, 2.0),
         vec3(0.0, 0.0, 0.0),
         vec3(0.0, 1.0, 0.0),
-        0.5,
+        1.0,
         0.1,
         10.0,
     );
