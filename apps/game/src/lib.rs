@@ -1,4 +1,5 @@
-mod main;
+#[cfg(target_arch = "wasm32")]
+mod services;
 
 // Entry point for wasm
 #[cfg(target_arch = "wasm32")]
@@ -19,6 +20,6 @@ pub async fn start() -> Result<(), JsValue> {
     info!("Logging works!!");
 
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-    main::run().await;
+    services::game::run().await;
     Ok(())
 }
