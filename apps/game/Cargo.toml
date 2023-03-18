@@ -14,7 +14,7 @@ default = ["console_error_panic_hook"]
 default = ["console_log"]
 
 [dependencies]
-three-d = { version = "0.15.0", features=["egui-gui"] }
+bevy = "0.10"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
