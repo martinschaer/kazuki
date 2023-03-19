@@ -1,9 +1,11 @@
 use bevy::{
+    core_pipeline::clear_color::ClearColorConfig,
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
+    pbr::CascadeShadowConfigBuilder,
     prelude::*,
     reflect::TypeUuid,
     render::{
-        camera::RenderTarget,
+        camera::{RenderTarget, ScalingMode},
         mesh::InnerMeshVertexBufferLayout,
         render_resource::{
             AsBindGroup, RenderPipelineDescriptor, ShaderRef, SpecializedMeshPipelineError,
@@ -16,6 +18,7 @@ use bevy::{
     utils::{FixedState, Hashed},
     window::{PresentMode, WindowResized},
 };
+use std::f32::consts::PI;
 
 pub fn run() {
     App::new()
@@ -41,41 +44,39 @@ pub fn run() {
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
         .add_startup_system(setup)
+        .add_startup_system(setup_3d)
+        .add_startup_system(setup_camera)
         .add_system(text_update_system)
         .add_system(on_resize_system)
+        .add_system(controls_system)
         .run();
 }
 
 #[derive(Component)]
-struct FpsText;
+struct DebugText;
 
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    windows: Query<&Window>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut post_processing_materials: ResMut<Assets<PostProcessingMaterial>>,
-    // mut materials: ResMut<Assets<StandardMaterial>>,
-    mut images: ResMut<Assets<Image>>,
-) {
+#[derive(Component)]
+struct AmbientStrength;
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/Hack-Bold.ttf");
     let text_style = TextStyle {
         font: font.clone(),
         font_size: 60.0,
         color: Color::WHITE,
     };
-    // let text_alignment = TextAlignment::Center;
+
     // 2d text
     commands.spawn(Text2dBundle {
         text: Text::from_section("Kazuki", text_style.clone()).clone(),
         ..default()
     });
 
-    // text
+    // UI text
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new(
-                "FPS: ",
+                "Debug: ",
                 TextStyle {
                     font,
                     font_size: 30.0,
@@ -88,15 +89,77 @@ fn setup(
                 color: Color::GOLD,
             }),
         ]),
-        FpsText,
+        DebugText,
     ));
+}
 
+fn setup_3d(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // plane
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(shape::Plane::from_size(16.0).into()),
+        material: materials.add(Color::hsl(0.0, 1.0, 1.0).into()),
+        ..default()
+    });
+
+    // cube
+    for x in 0..6 {
+        commands.spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+            material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
+            transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
+            ..default()
+        });
+    }
+
+    // ambient light
+    commands.insert_resource(AmbientLight {
+        color: Color::WHITE,
+        brightness: 0.2,
+    });
+
+    // directional light
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            shadows_enabled: true,
+            illuminance: 25000.,
+            ..default()
+        },
+        transform: Transform {
+            translation: Vec3::new(0.0, 2.0, 0.0),
+            rotation: Quat::from_xyzw(-PI / 8., 0., -PI / 8., 1.),
+            ..default()
+        },
+        // The default cascade config is designed to handle large scenes.
+        // As this example has a much smaller world, we can tighten the shadow
+        // bounds for better visual quality.
+        cascade_shadow_config: CascadeShadowConfigBuilder {
+            first_cascade_far_bound: 4.0,
+            maximum_distance: 10.0,
+            ..default()
+        }
+        .into(),
+        ..default()
+    });
+}
+
+fn setup_camera(
+    mut commands: Commands,
+    windows: Query<&Window>,
+    mut images: ResMut<Assets<Image>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut post_processing_materials: ResMut<Assets<PostProcessingMaterial>>,
+) {
     let window = windows.single();
     let size = bevy::render::render_resource::Extent3d {
         width: window.resolution.physical_width(),
         height: window.resolution.physical_height(),
         ..default()
     };
+
     // texture that will be rendered to
     let mut image = Image {
         texture_descriptor: TextureDescriptor {
@@ -118,8 +181,15 @@ fn setup(
 
     // Camera
     commands.spawn((
-        Camera2dBundle {
-            camera_2d: Camera2d {
+        Camera3dBundle {
+            projection: OrthographicProjection {
+                scale: 3.0,
+                scaling_mode: ScalingMode::FixedVertical(2.0),
+                ..default()
+            }
+            .into(),
+            transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
                 ),
@@ -127,6 +197,23 @@ fn setup(
             },
             camera: Camera {
                 target: RenderTarget::Image(image_handle.clone()),
+                order: 1,
+                ..default()
+            },
+            ..default()
+        },
+        UiCameraConfig { show_ui: false },
+    ));
+
+    commands.spawn((
+        Camera2dBundle {
+            camera_2d: Camera2d {
+                clear_color: ClearColorConfig::None,
+                ..default()
+            },
+            camera: Camera {
+                target: RenderTarget::Image(image_handle.clone()),
+                order: 2,
                 ..default()
             },
             ..default()
@@ -169,13 +256,19 @@ fn setup(
     ));
 }
 
-fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<FpsText>>) {
+fn text_update_system(
+    diagnostics: Res<Diagnostics>,
+    ambient_light: Res<AmbientLight>,
+    mut query: Query<&mut Text, With<DebugText>>,
+) {
+    let mut fps = 0.0;
     for mut text in &mut query {
-        if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
-            if let Some(value) = fps.smoothed() {
-                text.sections[1].value = format!("{value:.2}");
+        if let Some(fps_diagnostic) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+            if let Some(fps_smoothed) = fps_diagnostic.smoothed() {
+                fps = fps_smoothed;
             }
         }
+        text.sections[1].value = format!("{fps:.2} / {:.2}", ambient_light.brightness);
     }
 }
 
@@ -183,6 +276,14 @@ fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
     for e in resize_reader.iter() {
         println!("{:.1} x {:.1}", e.width, e.height);
     }
+}
+
+fn controls_system(
+    // input: Res<Input<KeyCode>>,
+    mut ambient_light: ResMut<AmbientLight>,
+    time: Res<Time>,
+) {
+    ambient_light.brightness = (time.elapsed_seconds()).sin() + 1.0;
 }
 
 #[derive(AsBindGroup, TypeUuid, Clone)]
