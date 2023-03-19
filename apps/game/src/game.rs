@@ -48,7 +48,8 @@ pub fn run() {
         .add_startup_system(setup_camera)
         .add_system(text_update_system)
         .add_system(on_resize_system)
-        .add_system(controls_system)
+        .add_system(light_animation_system)
+        .add_system(cube_animation_system)
         .run();
 }
 
@@ -57,6 +58,11 @@ struct DebugText;
 
 #[derive(Component)]
 struct AmbientStrength;
+
+#[derive(Component)]
+struct Player {
+    index: u8,
+}
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/Hack-Bold.ttf");
@@ -107,12 +113,15 @@ fn setup_3d(
 
     // cube
     for x in 0..6 {
-        commands.spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-            material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
-            transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
-            ..default()
-        });
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+                material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
+                transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
+                ..default()
+            },
+            Player { index: x },
+        ));
     }
 
     // ambient light
@@ -278,12 +287,22 @@ fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
     }
 }
 
-fn controls_system(
+fn light_animation_system(
     // input: Res<Input<KeyCode>>,
     mut ambient_light: ResMut<AmbientLight>,
     time: Res<Time>,
 ) {
-    ambient_light.brightness = (time.elapsed_seconds()).sin() + 1.0;
+    ambient_light.brightness = time.elapsed_seconds().sin() + 1.0;
+}
+
+fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &Player)>) {
+    for (mut transform, player) in &mut players {
+        transform.translation = Vec3::new(
+            player.index as f32 - 2.5,
+            (time.elapsed_seconds() + player.index as f32 * PI / 6.0).sin() + 1.25,
+            0.,
+        );
+    }
 }
 
 #[derive(AsBindGroup, TypeUuid, Clone)]
