@@ -7,9 +7,9 @@ layout(set = 1, binding = 0) uniform texture2D CustomMaterial_texture;
 layout(set = 1, binding = 1) uniform sampler CustomMaterial_sampler;
 
 void main() {
-    vec2 rOffset = vec2(-0.001, 0.002);
-    vec2 gOffset = vec2(0.002, 0.002);
-    vec2 bOffset = vec2(0.0, -0.001);
+    vec2 rOffset = vec2(-0.002, 0.004);
+    vec2 gOffset = vec2(0.004, 0.004);
+    vec2 bOffset = vec2(0.0, -0.002);
 
     float rValue = texture(
       sampler2D(CustomMaterial_texture, CustomMaterial_sampler),
