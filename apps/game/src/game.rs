@@ -14,18 +14,35 @@ use bevy::{
     },
     sprite::{Material2d, Material2dKey, Material2dPlugin, MaterialMesh2dBundle},
     utils::{FixedState, Hashed},
+    window::{PresentMode, WindowResized},
 };
 
 pub fn run() {
     App::new()
-        .add_plugins(DefaultPlugins.set(AssetPlugin {
-            watch_for_changes: true,
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Kazuki!".into(),
+                        resolution: (640., 480.).into(),
+                        present_mode: PresentMode::AutoVsync,
+                        canvas: Some("main canvas".into()),
+                        fit_canvas_to_parent: true,
+                        prevent_default_event_handling: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    watch_for_changes: true,
+                    ..default()
+                }),
+        )
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
         .add_startup_system(setup)
         .add_system(text_update_system)
+        .add_system(on_resize_system)
         .run();
 }
 
@@ -159,6 +176,12 @@ fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text,
                 text.sections[1].value = format!("{value:.2}");
             }
         }
+    }
+}
+
+fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
+    for e in resize_reader.iter() {
+        println!("{:.1} x {:.1}", e.width, e.height);
     }
 }
 

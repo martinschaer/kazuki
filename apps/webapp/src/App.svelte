@@ -4,5 +4,9 @@
   });
 </script>
 
+<main>
+  <canvas />
+</main>
+
 <style>
 </style>
