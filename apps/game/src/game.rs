@@ -44,6 +44,7 @@ pub fn run() {
         )
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
+        // .add_plugin(Material2dPlugin::<ToonMaterial>::default())
         .add_startup_system(setup)
         .add_startup_system(setup_3d)
         .add_startup_system(setup_camera)
@@ -162,6 +163,7 @@ fn setup_camera(
     mut images: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut post_processing_materials: ResMut<Assets<PostProcessingMaterial>>,
+    // mut post_processing_materials: ResMut<Assets<ToonMaterial>>,
 ) {
     let window = windows.single();
     let size = bevy::render::render_resource::Extent3d {
@@ -231,20 +233,23 @@ fn setup_camera(
         UiCameraConfig { show_ui: false },
     ));
 
+    let resolution = Vec2::new(size.width as f32, size.height as f32);
     let post_processing_pass_layer = RenderLayers::layer((RenderLayers::TOTAL_LAYERS - 1) as u8);
-    let quad_handle = meshes.add(Mesh::from(shape::Quad::new(Vec2::new(
-        size.width as f32,
-        size.height as f32,
-    ))));
+    let quad_handle = meshes.add(Mesh::from(shape::Quad::new(resolution)));
     let material_handle = post_processing_materials.add(PostProcessingMaterial {
         source_image: image_handle,
         time: 0.,
         intensity: 0.005,
     });
+    // let toon_material_handle = post_processing_materials.add(ToonMaterial {
+    //     color_texture: Some(image_handle),
+    //     resolution,
+    // });
     commands.spawn((
         MaterialMesh2dBundle {
             mesh: quad_handle.into(),
             material: material_handle,
+            // material: toon_material_handle,
             transform: Transform {
                 translation: Vec3::new(0.0, 0.0, 1.5),
                 ..default()
@@ -343,3 +348,31 @@ impl Material2d for PostProcessingMaterial {
         Ok(())
     }
 }
+
+// #[derive(AsBindGroup, TypeUuid, Clone)]
+// #[uuid = "a481f13b-6bf2-4b27-9493-1d632b582f60"]
+// struct ToonMaterial {
+//     #[texture(0)]
+//     #[sampler(1)]
+//     color_texture: Option<Handle<Image>>,
+//     #[uniform(2)]
+//     resolution: Vec2,
+// }
+//
+// impl Material2d for ToonMaterial {
+//     fn vertex_shader() -> ShaderRef {
+//         "shaders/custom.vert".into()
+//     }
+//     fn fragment_shader() -> ShaderRef {
+//         "shaders/toon.frag".into()
+//     }
+//     fn specialize(
+//         descriptor: &mut RenderPipelineDescriptor,
+//         _layout: &Hashed<InnerMeshVertexBufferLayout, FixedState>,
+//         _key: Material2dKey<Self>,
+//     ) -> Result<(), SpecializedMeshPipelineError> {
+//         descriptor.vertex.entry_point = "main".into();
+//         descriptor.fragment.as_mut().unwrap().entry_point = "main".into();
+//         Ok(())
+//     }
+// }
