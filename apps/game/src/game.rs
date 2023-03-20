@@ -1,6 +1,7 @@
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
+    input::mouse::MouseMotion,
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
     reflect::TypeUuid,
@@ -48,7 +49,7 @@ pub fn run() {
         .add_startup_system(setup_camera)
         .add_system(text_update_system)
         .add_system(on_resize_system)
-        .add_system(light_animation_system)
+        .add_system(material_animation_system)
         .add_system(cube_animation_system)
         .run();
 }
@@ -237,6 +238,8 @@ fn setup_camera(
     ))));
     let material_handle = post_processing_materials.add(PostProcessingMaterial {
         source_image: image_handle,
+        time: 0.,
+        intensity: 0.005,
     });
     commands.spawn((
         MaterialMesh2dBundle {
@@ -283,20 +286,30 @@ fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
     }
 }
 
-fn light_animation_system(
-    // input: Res<Input<KeyCode>>,
-    mut ambient_light: ResMut<AmbientLight>,
+fn material_animation_system(
     time: Res<Time>,
+    post_material: Query<&Handle<PostProcessingMaterial>>,
+    mut materials: ResMut<Assets<PostProcessingMaterial>>,
+    mut mouse_events: EventReader<MouseMotion>,
 ) {
-    ambient_light.brightness = time.elapsed_seconds().sin() + 1.0;
+    let mut mouse_delta = 0.;
+    for mouse_event in mouse_events.iter() {
+        mouse_delta = mouse_event.delta.length();
+    }
+    for mat_handle in &post_material {
+        if let Some(m) = materials.get_mut(mat_handle) {
+            m.time = time.elapsed_seconds();
+            m.intensity = mouse_delta * 0.01;
+        }
+    }
 }
 
 fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &Player)>) {
     for (mut transform, player) in &mut players {
         transform.translation = Vec3::new(
             player.index as f32 - 2.5,
-            (time.elapsed_seconds() + player.index as f32 * PI / 6.0).sin() + 1.25,
-            0.,
+            0.25,
+            (time.elapsed_seconds() + player.index as f32 * PI / 6.0).cos() + 1.25,
         );
     }
 }
@@ -307,6 +320,10 @@ struct PostProcessingMaterial {
     #[texture(0)]
     #[sampler(1)]
     source_image: Handle<Image>,
+    #[uniform(2)]
+    time: f32,
+    #[uniform(3)]
+    intensity: f32,
 }
 
 impl Material2d for PostProcessingMaterial {
