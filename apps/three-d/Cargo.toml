@@ -14,7 +14,7 @@ default = ["console_error_panic_hook"]
 default = ["console_log"]
 
 [dependencies]
-bevy = "0.10"
+three-d = { version = "0.15.0", features=["egui-gui"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
@@ -36,6 +36,5 @@ log = "0.4"
 console_log = "0.2"
 
 [profile.release]
-opt-level = "z"
-lto = "fat"
-codegen-units = 1
+# Tell `rustc` to optimize for small code size
+opt-level = "s"

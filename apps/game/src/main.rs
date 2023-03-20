@@ -1,8 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
-mod services;
+mod game;
 
 #[cfg(not(target_arch = "wasm32"))]
-#[tokio::main]
-pub async fn main() {
-    services::game::run().await;
+pub fn main() {
+    game::run();
 }
