@@ -1,11 +1,14 @@
 # Kazuki
 
-## To-do
-
-- add three-d instead of beryllium
-
-## build
+## Run standalone
 
 ```bash
-wasm-pack build apps/game --target bundler
+cd apps/game
+cargo run
+```
+
+## Run WASM
+
+```bash
+turbo dev
 ```
