@@ -265,11 +265,7 @@ fn setup_camera(
     ));
 }
 
-fn text_update_system(
-    diagnostics: Res<Diagnostics>,
-    ambient_light: Res<AmbientLight>,
-    mut query: Query<&mut Text, With<DebugText>>,
-) {
+fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<DebugText>>) {
     let mut fps = 0.0;
     for mut text in &mut query {
         if let Some(fps_diagnostic) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
@@ -277,7 +273,7 @@ fn text_update_system(
                 fps = fps_smoothed;
             }
         }
-        text.sections[1].value = format!("{fps:.2} / {:.2}", ambient_light.brightness);
+        text.sections[1].value = format!("{fps:.2}");
     }
 }
 
