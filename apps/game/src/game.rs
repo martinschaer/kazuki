@@ -68,8 +68,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/Hack-Bold.ttf");
     let text_style = TextStyle {
         font: font.clone(),
-        font_size: 60.0,
-        color: Color::WHITE,
+        font_size: 40.0,
+        color: Color::hsl(120., 0.5, 0.1),
     };
 
     // 2d text
@@ -85,14 +85,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 "Debug: ",
                 TextStyle {
                     font,
-                    font_size: 30.0,
-                    color: Color::WHITE,
+                    font_size: 10.0,
+                    color: Color::hsl(60., 0.5, 0.1),
                 },
             ),
             TextSection::from_style(TextStyle {
                 font: asset_server.load("fonts/Hack-Regular.ttf"),
-                font_size: 30.0,
-                color: Color::GOLD,
+                font_size: 10.0,
+                color: Color::hsl(120., 0.5, 0.1),
             }),
         ]),
         DebugText,
@@ -107,7 +107,7 @@ fn setup_3d(
     // plane
     commands.spawn(PbrBundle {
         mesh: meshes.add(shape::Plane::from_size(16.0).into()),
-        material: materials.add(Color::hsl(0.0, 1.0, 1.0).into()),
+        material: materials.add(Color::hsl(180.0, 0.5, 0.95).into()),
         ..default()
     });
 
@@ -127,14 +127,14 @@ fn setup_3d(
     // ambient light
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
-        brightness: 0.2,
+        brightness: 5.0,
     });
 
     // directional light
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
-            illuminance: 25000.,
+            illuminance: 100000.,
             ..default()
         },
         transform: Transform {
@@ -197,7 +197,7 @@ fn setup_camera(
                 ..default()
             }
             .into(),
-            transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(-4.0, 4.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
