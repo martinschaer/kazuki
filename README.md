@@ -1,5 +1,7 @@
 # Kazuki
 
+![screenshot](./assets/screenshot.gif)
+
 ## Run standalone
 
 ```bash
