@@ -1,22 +1,9 @@
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
-    input::mouse::MouseMotion,
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
-    reflect::TypeUuid,
-    render::{
-        camera::{RenderTarget, ScalingMode},
-        mesh::InnerMeshVertexBufferLayout,
-        render_resource::{
-            AsBindGroup, RenderPipelineDescriptor, ShaderRef, SpecializedMeshPipelineError,
-            TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
-        },
-        texture::BevyDefault,
-        view::RenderLayers,
-    },
-    sprite::{Material2d, Material2dKey, Material2dPlugin, MaterialMesh2dBundle},
-    utils::{FixedState, Hashed},
+    render::camera::ScalingMode,
     window::{PresentMode, WindowResized},
 };
 use std::f32::consts::PI;
@@ -43,23 +30,19 @@ pub fn run() {
                 }),
         )
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
-        // .add_plugin(Material2dPlugin::<ToonMaterial>::default())
+        // .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
         .add_startup_system(setup)
         .add_startup_system(setup_3d)
         .add_startup_system(setup_camera)
         .add_system(text_update_system)
         .add_system(on_resize_system)
-        .add_system(material_animation_system)
+        // .add_system(material_animation_system)
         .add_system(cube_animation_system)
         .run();
 }
 
 #[derive(Component)]
 struct DebugText;
-
-#[derive(Component)]
-struct AmbientStrength;
 
 #[derive(Component)]
 struct Player {
@@ -159,12 +142,13 @@ fn setup_3d(
 
 fn setup_camera(
     mut commands: Commands,
-    windows: Query<&Window>,
-    mut images: ResMut<Assets<Image>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut post_processing_materials: ResMut<Assets<PostProcessingMaterial>>,
-    // mut post_processing_materials: ResMut<Assets<ToonMaterial>>,
+    // windows: Query<&Window>,
+    // mut images: ResMut<Assets<Image>>,
+    // mut meshes: ResMut<Assets<Mesh>>,
+    // mut post_processing_materials: ResMut<Assets<PostProcessingMaterial>>,
 ) {
+    // Postprocessing
+    /*
     let window = windows.single();
     let size = bevy::render::render_resource::Extent3d {
         width: window.resolution.physical_width(),
@@ -190,6 +174,7 @@ fn setup_camera(
     };
     image.resize(size);
     let image_handle = images.add(image);
+    */
 
     // Camera
     commands.spawn((
@@ -208,31 +193,33 @@ fn setup_camera(
                 ..default()
             },
             camera: Camera {
-                target: RenderTarget::Image(image_handle.clone()),
-                order: 1,
+                // Postprocessing
+                // target: RenderTarget::Image(image_handle.clone()),
+                order: 0,
                 ..default()
             },
             ..default()
         },
-        UiCameraConfig { show_ui: false },
+        // UiCameraConfig { show_ui: false },
     ));
 
-    commands.spawn((
-        Camera2dBundle {
-            camera_2d: Camera2d {
-                clear_color: ClearColorConfig::None,
-                ..default()
-            },
-            camera: Camera {
-                target: RenderTarget::Image(image_handle.clone()),
-                order: 2,
-                ..default()
-            },
+    // Without postprocessing
+    commands.spawn(Camera2dBundle {
+        camera_2d: Camera2d {
+            clear_color: ClearColorConfig::None,
             ..default()
         },
-        UiCameraConfig { show_ui: false },
-    ));
+        camera: Camera {
+            // Postprocessing
+            // target: RenderTarget::Image(image_handle.clone()),
+            order: 1,
+            ..default()
+        },
+        ..default()
+    });
 
+    // Postprocessing
+    /*
     let resolution = Vec2::new(size.width as f32, size.height as f32);
     let post_processing_pass_layer = RenderLayers::layer((RenderLayers::TOTAL_LAYERS - 1) as u8);
     let quad_handle = meshes.add(Mesh::from(shape::Quad::new(resolution)));
@@ -241,10 +228,6 @@ fn setup_camera(
         time: 0.,
         intensity: 0.005,
     });
-    // let toon_material_handle = post_processing_materials.add(ToonMaterial {
-    //     color_texture: Some(image_handle),
-    //     resolution,
-    // });
     commands.spawn((
         MaterialMesh2dBundle {
             mesh: quad_handle.into(),
@@ -271,6 +254,7 @@ fn setup_camera(
         },
         post_processing_pass_layer,
     ));
+    */
 }
 
 fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<DebugText>>) {
@@ -291,6 +275,7 @@ fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
     }
 }
 
+/*
 fn material_animation_system(
     time: Res<Time>,
     post_material: Query<&Handle<PostProcessingMaterial>>,
@@ -308,6 +293,7 @@ fn material_animation_system(
         }
     }
 }
+*/
 
 fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &Player)>) {
     for (mut transform, player) in &mut players {
@@ -319,6 +305,7 @@ fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &P
     }
 }
 
+/*
 #[derive(AsBindGroup, TypeUuid, Clone)]
 #[uuid = "759c427a-98fa-4545-966d-7a8da94ba40a"]
 struct PostProcessingMaterial {
@@ -348,31 +335,4 @@ impl Material2d for PostProcessingMaterial {
         Ok(())
     }
 }
-
-// #[derive(AsBindGroup, TypeUuid, Clone)]
-// #[uuid = "a481f13b-6bf2-4b27-9493-1d632b582f60"]
-// struct ToonMaterial {
-//     #[texture(0)]
-//     #[sampler(1)]
-//     color_texture: Option<Handle<Image>>,
-//     #[uniform(2)]
-//     resolution: Vec2,
-// }
-//
-// impl Material2d for ToonMaterial {
-//     fn vertex_shader() -> ShaderRef {
-//         "shaders/custom.vert".into()
-//     }
-//     fn fragment_shader() -> ShaderRef {
-//         "shaders/toon.frag".into()
-//     }
-//     fn specialize(
-//         descriptor: &mut RenderPipelineDescriptor,
-//         _layout: &Hashed<InnerMeshVertexBufferLayout, FixedState>,
-//         _key: Material2dKey<Self>,
-//     ) -> Result<(), SpecializedMeshPipelineError> {
-//         descriptor.vertex.entry_point = "main".into();
-//         descriptor.fragment.as_mut().unwrap().entry_point = "main".into();
-//         Ok(())
-//     }
-// }
+*/
