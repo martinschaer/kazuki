@@ -1,1 +1,3 @@
-pub mod main_scene;
+mod main_scene;
+
+pub struct MainScenePlugin;

@@ -1,4 +1,4 @@
-use crate::plugins::main_scene::MainScenePlugin;
+use crate::plugins::MainScenePlugin;
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
 
 pub fn run() {

@@ -9,7 +9,15 @@ use bevy::{
 };
 use std::f32::consts::PI;
 
-pub struct MainScenePlugin;
+use super::MainScenePlugin;
+
+#[derive(Component)]
+struct DebugText;
+
+#[derive(Component)]
+struct Player {
+    index: u8,
+}
 
 impl Plugin for MainScenePlugin {
     fn build(&self, app: &mut App) {
@@ -33,13 +41,6 @@ fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &P
             (time.elapsed_seconds() + player.index as f32 * PI / 6.0).cos() + 1.25,
         );
     }
-}
-#[derive(Component)]
-struct DebugText;
-
-#[derive(Component)]
-struct Player {
-    index: u8,
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
