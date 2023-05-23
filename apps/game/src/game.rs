@@ -1,4 +1,4 @@
-use crate::plugins::MainScenePlugin;
+use crate::plugins::{MainScenePlugin, PhysicsPlugin};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
 
 pub fn run() {
@@ -24,5 +24,6 @@ pub fn run() {
         )
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(MainScenePlugin)
+        .add_plugin(PhysicsPlugin)
         .run();
 }
