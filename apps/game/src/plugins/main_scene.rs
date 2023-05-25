@@ -7,6 +7,7 @@ use bevy::{
     render::camera::ScalingMode,
     window::WindowResized,
 };
+use bevy_rapier3d::prelude::{Collider, Restitution, RigidBody};
 use std::f32::consts::PI;
 
 use super::MainScenePlugin;
@@ -84,23 +85,33 @@ fn setup_3d(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // plane
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(16.0).into()),
-        material: materials.add(Color::hsl(180.0, 0.5, 0.95).into()),
-        ..default()
-    });
+    commands
+        .spawn(PbrBundle {
+            mesh: meshes.add(shape::Plane::from_size(16.0).into()),
+            material: materials.add(Color::hsl(180.0, 0.5, 0.95).into()),
+            ..default()
+        })
+        .with_children(|children| {
+            children
+                .spawn(RigidBody::Fixed)
+                .insert(Collider::cuboid(8., 0.1, 8.))
+                .insert(TransformBundle::from(Transform::from_xyz(0., -0.05, 0.)));
+        });
 
     // cube
     for x in 0..6 {
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
-                transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
-                ..default()
-            },
-            Player { index: x },
-        ));
+        commands
+            .spawn((
+                PbrBundle {
+                    mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+                    material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
+                    transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
+                    ..default()
+                },
+                Player { index: x },
+            ))
+            .insert(RigidBody::KinematicPositionBased)
+            .insert(Collider::cuboid(0.25, 0.25, 0.25));
     }
 
     // ambient light
@@ -132,6 +143,20 @@ fn setup_3d(
         .into(),
         ..default()
     });
+
+    // car
+
+    commands
+        .spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+            material: materials.add(Color::hsla(60.0, 1.0, 0.5, 0.8).into()),
+            transform: Transform::from_xyz(0., 4., 2.)
+                .with_rotation(Quat::from_rotation_y((45_f32).to_radians())),
+            ..default()
+        })
+        .insert(RigidBody::Dynamic)
+        .insert(Collider::cuboid(0.25, 0.25, 0.25))
+        .insert(Restitution::coefficient(0.5));
 }
 
 fn setup_camera(

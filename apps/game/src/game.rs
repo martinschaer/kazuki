@@ -1,5 +1,9 @@
-use crate::plugins::{MainScenePlugin, PhysicsPlugin};
+use crate::plugins::MainScenePlugin;
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
+use bevy_rapier3d::{
+    prelude::{NoUserData, RapierPhysicsPlugin},
+    render::RapierDebugRenderPlugin,
+};
 
 pub fn run() {
     App::new()
@@ -23,7 +27,8 @@ pub fn run() {
                 }),
         )
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugin(MainScenePlugin)
-        .add_plugin(PhysicsPlugin)
+        .add_plugin(RapierDebugRenderPlugin::default())
         .run();
 }
