@@ -5,9 +5,8 @@ use bevy::{
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
     render::camera::ScalingMode,
-    window::WindowResized,
 };
-use bevy_rapier3d::prelude::{Collider, Restitution, RigidBody};
+use bevy_rapier3d::prelude::{Collider, RigidBody};
 use std::f32::consts::PI;
 
 use super::MainScenePlugin;
@@ -28,7 +27,6 @@ impl Plugin for MainScenePlugin {
             .add_startup_system(setup_3d)
             .add_startup_system(setup_camera)
             .add_system(text_update_system)
-            .add_system(on_resize_system)
             // .add_system(material_animation_system)
             .add_system(cube_animation_system);
     }
@@ -143,20 +141,6 @@ fn setup_3d(
         .into(),
         ..default()
     });
-
-    // car
-
-    commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-            material: materials.add(Color::hsla(60.0, 1.0, 0.5, 0.8).into()),
-            transform: Transform::from_xyz(0., 4., 2.)
-                .with_rotation(Quat::from_rotation_y((45_f32).to_radians())),
-            ..default()
-        })
-        .insert(RigidBody::Dynamic)
-        .insert(Collider::cuboid(0.25, 0.25, 0.25))
-        .insert(Restitution::coefficient(0.5));
 }
 
 fn setup_camera(
@@ -285,12 +269,6 @@ fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text,
             }
         }
         text.sections[1].value = format!("{fps:.2}");
-    }
-}
-
-fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
-    for e in resize_reader.iter() {
-        println!("{:.1} x {:.1}", e.width, e.height);
     }
 }
 
