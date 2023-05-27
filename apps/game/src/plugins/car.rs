@@ -14,12 +14,24 @@ impl Plugin for CarPlugin {
     }
 }
 
+struct CarSpecs {
+    height: f32,
+    width: f32,
+    length: f32,
+    // mass: f32,
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let car_half_size = 0.75;
+    let car_specs = CarSpecs {
+        height: 0.95,
+        length: 5.5,
+        width: 2.,
+        // mass: 796.,
+    };
     let car_transform = Transform::from_xyz(1., 3., -1.).with_rotation(Quat::from_euler(
         EulerRot::XYZ,
         0.,
@@ -30,8 +42,13 @@ fn setup(
     // body
     let body_entity = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube {
-                size: car_half_size * 2.,
+            mesh: meshes.add(Mesh::from(shape::Box {
+                min_x: car_specs.width / -2.,
+                max_x: car_specs.width / 2.,
+                min_y: car_specs.height / -2.,
+                max_y: car_specs.height / 2.,
+                min_z: car_specs.length / -2.,
+                max_z: car_specs.length / 2.,
             })),
             material: materials.add(Color::hsla(60.0, 0.0, 0.5, 0.5).into()),
             transform: car_transform,
@@ -39,18 +56,34 @@ fn setup(
         })
         .insert(RigidBody::Dynamic)
         .insert(Collider::cuboid(
-            car_half_size,
-            car_half_size,
-            car_half_size,
+            car_specs.width / 2.,
+            car_specs.height / 2.,
+            car_specs.length / 2.,
         ))
         .id();
 
     // wheels
     let wheels_anchors = [
-        Vec3::new(-1.2, -car_half_size, -car_half_size),
-        Vec3::new(1.2, -car_half_size, -car_half_size),
-        Vec3::new(-1.2, -car_half_size, car_half_size),
-        Vec3::new(1.2, -car_half_size, car_half_size),
+        Vec3::new(
+            car_specs.width / -2.,
+            car_specs.height * -0.25,
+            car_specs.length * -0.3,
+        ),
+        Vec3::new(
+            car_specs.width / 2.,
+            car_specs.height * -0.25,
+            car_specs.length * -0.3,
+        ),
+        Vec3::new(
+            car_specs.width / -2.,
+            car_specs.height / -2.,
+            car_specs.length * 0.4,
+        ),
+        Vec3::new(
+            car_specs.width / 2.,
+            car_specs.height / -2.,
+            car_specs.length * 0.4,
+        ),
     ];
     for (i, anchor) in wheels_anchors.iter().enumerate() {
         let material = materials.add(Color::hsl(90. * i as f32, 1.0, 0.5).into());
@@ -75,18 +108,18 @@ fn spawn_wheel(
     anchor: Vec3,
     is_left: bool,
 ) {
-    let wheel_half_height = 0.2;
-    let wheel_radius = 0.4;
-    let wheel_border_radius = 0.05;
+    let wheel_half_height = 0.4;
+    let wheel_diameter = 0.72;
+    let wheel_border_radius = 0.1;
     let wheel_mesh = meshes.add(Mesh::from(shape::Cylinder {
-        radius: wheel_radius,
+        radius: wheel_diameter / 2.,
         height: wheel_half_height,
         ..default()
     }));
 
     let wheel_collider = Collider::round_cylinder(
         wheel_half_height - (wheel_border_radius * 2.),
-        wheel_radius - wheel_border_radius,
+        wheel_diameter / 2. - wheel_border_radius,
         wheel_border_radius,
     );
 
@@ -98,9 +131,10 @@ fn spawn_wheel(
         })
         // .local_basis1(Quat::from_axis_angle(Vec3::Y, 0.)) // hackfix, prevents jumping on collider edges
         .local_anchor1(anchor)
+        // TODO: move wheel to the inside, but avoid collissions with body
         .local_anchor2(Vec3::new(
             0.,
-            wheel_half_height + wheel_border_radius + 0.1,
+            wheel_half_height + wheel_border_radius + 0.,
             0.,
         ))
         // .set_motor(JointAxis::Y, 0., 0., 1e6, 1e3)
@@ -122,6 +156,6 @@ fn spawn_wheel(
         )
         .insert(RigidBody::Dynamic)
         .insert(wheel_collider)
-        .insert(Restitution::coefficient(0.5))
+        // .insert(Restitution::coefficient(0.5))
         .insert(ImpulseJoint::new(body_entity, joint));
 }

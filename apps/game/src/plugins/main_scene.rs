@@ -85,14 +85,14 @@ fn setup_3d(
     // plane
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(shape::Plane::from_size(16.0).into()),
+            mesh: meshes.add(shape::Plane::from_size(32.0).into()),
             material: materials.add(Color::hsla(180.0, 0.5, 0.95, 0.1).into()),
             ..default()
         })
         .with_children(|children| {
             children
                 .spawn(RigidBody::Fixed)
-                .insert(Collider::cuboid(8., 0.1, 8.))
+                .insert(Collider::cuboid(16., 0.1, 16.))
                 .insert(TransformBundle::from(Transform::from_xyz(0., -0.05, 0.)));
         });
 
@@ -183,7 +183,7 @@ fn setup_camera(
     commands.spawn((
         Camera3dBundle {
             projection: OrthographicProjection {
-                scale: 3.0,
+                scale: 5.0,
                 scaling_mode: ScalingMode::FixedVertical(2.0),
                 ..default()
             }
