@@ -86,7 +86,7 @@ fn setup_3d(
     commands
         .spawn(PbrBundle {
             mesh: meshes.add(shape::Plane::from_size(16.0).into()),
-            material: materials.add(Color::hsl(180.0, 0.5, 0.95).into()),
+            material: materials.add(Color::hsla(180.0, 0.5, 0.95, 0.1).into()),
             ..default()
         })
         .with_children(|children| {
