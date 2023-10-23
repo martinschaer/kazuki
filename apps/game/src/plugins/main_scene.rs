@@ -1,7 +1,7 @@
 use bevy::app::{App, Plugin};
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
+    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
     render::camera::ScalingMode,
@@ -23,12 +23,12 @@ impl Plugin for MainScenePlugin {
     fn build(&self, app: &mut App) {
         app
             // .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
-            .add_startup_system(setup)
-            .add_startup_system(setup_3d)
-            .add_startup_system(setup_camera)
-            .add_system(text_update_system)
-            // .add_system(material_animation_system)
-            .add_system(cube_animation_system);
+            .add_systems(Startup, setup)
+            .add_systems(Startup, setup_3d)
+            .add_systems(Startup, setup_camera)
+            .add_systems(Update, text_update_system)
+            // .add_systems(Update, material_animation_system)
+            .add_systems(Update, cube_animation_system);
     }
 }
 
@@ -210,7 +210,6 @@ fn setup_camera(
     commands.spawn(Camera2dBundle {
         camera_2d: Camera2d {
             clear_color: ClearColorConfig::None,
-            ..default()
         },
         camera: Camera {
             // Postprocessing
@@ -260,7 +259,7 @@ fn setup_camera(
     */
 }
 
-fn text_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, With<DebugText>>) {
+fn text_update_system(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<DebugText>>) {
     let mut fps = 0.0;
     for mut text in &mut query {
         if let Some(fps_diagnostic) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {

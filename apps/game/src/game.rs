@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use crate::plugins::CarPlugin;
 use crate::plugins::MainScenePlugin;
+use bevy::asset::ChangeWatcher;
 use bevy::window::WindowResized;
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
 use bevy_rapier3d::{
@@ -24,19 +27,16 @@ pub fn run() {
                     ..default()
                 })
                 .set(AssetPlugin {
-                    watch_for_changes: true,
+                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
                     ..default()
                 }),
         )
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(MainScenePlugin)
-        .add_plugin(CarPlugin)
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin {
-            always_on_top: true,
-            ..default()
-        })
-        .add_system(on_resize_system)
+        .add_plugins(FrameTimeDiagnosticsPlugin)
+        .add_plugins(MainScenePlugin)
+        .add_plugins(CarPlugin)
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugins(RapierDebugRenderPlugin::default())
+        .add_systems(Update, on_resize_system)
         .run();
 }
 
