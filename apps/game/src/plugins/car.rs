@@ -6,7 +6,7 @@ use bevy::{
 };
 use bevy_rapier3d::{prelude::*, rapier::prelude::JointAxesMask};
 
-use super::CarPlugin;
+use super::{CarPlugin, main_scene::{GROUP_BODY, GROUP_WHEEL, GROUP_SURFACE}};
 
 impl Plugin for CarPlugin {
     fn build(&self, app: &mut App) {
@@ -18,6 +18,8 @@ struct CarSpecs {
     height: f32,
     width: f32,
     length: f32,
+    wheel_half_height: f32,
+    wheel_diameter: f32,
     // mass: f32,
 }
 
@@ -26,10 +28,13 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // TODO: make this a resource
     let car_specs = CarSpecs {
         height: 0.95,
         length: 5.5,
         width: 2.,
+        wheel_half_height: 0.4,
+        wheel_diameter: 0.72,
         // mass: 796.,
     };
     let car_transform = Transform::from_xyz(1., 3., -1.).with_rotation(Quat::from_euler(
@@ -60,28 +65,32 @@ fn setup(
             car_specs.height / 2.,
             car_specs.length / 2.,
         ))
+        .insert(CollisionGroups::new(
+            bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY),
+            bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY | GROUP_SURFACE),
+        ))
         .id();
 
     // wheels
     let wheels_anchors = [
         Vec3::new(
-            car_specs.width / -2.,
-            car_specs.height * -0.25,
+            car_specs.width / -2. + car_specs.wheel_half_height * 2.,
+            -car_specs.height + car_specs.wheel_diameter * 0.5,
             car_specs.length * -0.3,
         ),
         Vec3::new(
-            car_specs.width / 2.,
-            car_specs.height * -0.25,
+            car_specs.width / 2. - car_specs.wheel_half_height * 2.,
+            -car_specs.height + car_specs.wheel_diameter * 0.5,
             car_specs.length * -0.3,
         ),
         Vec3::new(
-            car_specs.width / -2.,
-            car_specs.height / -2.,
+            car_specs.width / -2. + car_specs.wheel_half_height * 2.,
+            -car_specs.height + car_specs.wheel_diameter * 0.5,
             car_specs.length * 0.4,
         ),
         Vec3::new(
-            car_specs.width / 2.,
-            car_specs.height / -2.,
+            car_specs.width / 2. - car_specs.wheel_half_height * 2.,
+            -car_specs.height + car_specs.wheel_diameter * 0.5,
             car_specs.length * 0.4,
         ),
     ];
@@ -108,6 +117,7 @@ fn spawn_wheel(
     anchor: Vec3,
     is_left: bool,
 ) {
+    // TODO: get from CarSpecs resource
     let wheel_half_height = 0.4;
     let wheel_diameter = 0.72;
     let wheel_border_radius = 0.1;
@@ -156,6 +166,10 @@ fn spawn_wheel(
         )
         .insert(RigidBody::Dynamic)
         .insert(wheel_collider)
+        .insert(CollisionGroups::new(
+            bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL),
+            bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
+        ))
         // .insert(Restitution::coefficient(0.5))
         .insert(ImpulseJoint::new(body_entity, joint));
 }

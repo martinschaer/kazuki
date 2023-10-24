@@ -6,10 +6,14 @@ use bevy::{
     prelude::*,
     render::camera::ScalingMode,
 };
-use bevy_rapier3d::prelude::{Collider, RigidBody};
+use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
 use std::f32::consts::PI;
 
 use super::MainScenePlugin;
+
+pub const GROUP_SURFACE: u32 = 0b01;
+pub const GROUP_BODY: u32 = 0b10;
+pub const GROUP_WHEEL: u32 = 0b100;
 
 #[derive(Component)]
 struct DebugText;
@@ -93,23 +97,29 @@ fn setup_3d(
             children
                 .spawn(RigidBody::Fixed)
                 .insert(Collider::cuboid(16., 0.1, 16.))
+                .insert(CollisionGroups::new(
+                    bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
+                    bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL),
+                ))
                 .insert(TransformBundle::from(Transform::from_xyz(0., -0.05, 0.)));
         });
 
     // cube
     for x in 0..6 {
         commands
-            .spawn((
-                PbrBundle {
-                    mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                    material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
-                    transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
-                    ..default()
-                },
-                Player { index: x },
-            ))
+            .spawn((PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+                material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
+                transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
+                ..default()
+            },))
+            .insert(Player { index: x })
             .insert(RigidBody::KinematicPositionBased)
-            .insert(Collider::cuboid(0.25, 0.25, 0.25));
+            .insert(Collider::cuboid(0.25, 0.25, 0.25))
+            .insert(CollisionGroups::new(
+                bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
+                bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY | GROUP_WHEEL),
+            ));
     }
 
     // ambient light
@@ -259,7 +269,10 @@ fn setup_camera(
     */
 }
 
-fn text_update_system(diagnostics: Res<DiagnosticsStore>, mut query: Query<&mut Text, With<DebugText>>) {
+fn text_update_system(
+    diagnostics: Res<DiagnosticsStore>,
+    mut query: Query<&mut Text, With<DebugText>>,
+) {
     let mut fps = 0.0;
     for mut text in &mut query {
         if let Some(fps_diagnostic) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
