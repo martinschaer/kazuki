@@ -1,6 +1,6 @@
 # Kazuki
 
-![screenshot](./assets/screenshot.gif)
+![screenshot](./assets/screenshot.png)
 
 ## Run standalone
 
