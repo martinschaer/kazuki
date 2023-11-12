@@ -208,7 +208,7 @@ fn setup_camera(
             camera: Camera {
                 // Postprocessing
                 // target: RenderTarget::Image(image_handle.clone()),
-                order: 0,
+                order: 1,
                 ..default()
             },
             ..default()
@@ -224,7 +224,7 @@ fn setup_camera(
         camera: Camera {
             // Postprocessing
             // target: RenderTarget::Image(image_handle.clone()),
-            order: 1,
+            order: 2,
             ..default()
         },
         ..default()

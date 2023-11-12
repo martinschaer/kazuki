@@ -1,3 +1,4 @@
+use crate::plugins::controls::ControlsState;
 use std::f32::consts::PI;
 
 use bevy::{
@@ -6,11 +7,21 @@ use bevy::{
 };
 use bevy_rapier3d::{prelude::*, rapier::prelude::JointAxesMask};
 
-use super::{CarPlugin, main_scene::{GROUP_BODY, GROUP_WHEEL, GROUP_SURFACE}};
+use super::{
+    main_scene::{GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL},
+    CarPlugin,
+};
+
+#[derive(Component)]
+struct FrontWheel;
+
+#[derive(Component)]
+struct RearWheel;
 
 impl Plugin for CarPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup);
+        app.add_systems(Startup, setup)
+            .add_systems(Update, steering);
     }
 }
 
@@ -103,7 +114,7 @@ fn setup(
             body_entity,
             car_transform,
             *anchor,
-            i % 2 == 0,
+            i,
         );
     }
 }
@@ -115,7 +126,7 @@ fn spawn_wheel(
     body_entity: Entity,
     car_transform: Transform,
     anchor: Vec3,
-    is_left: bool,
+    wheel_num: usize,
 ) {
     // TODO: get from CarSpecs resource
     let wheel_half_height = 0.4;
@@ -135,13 +146,13 @@ fn spawn_wheel(
 
     let joint = GenericJointBuilder::new(JointAxesMask::LOCKED_REVOLUTE_AXES)
         .local_axis1(Vec3::X)
-        .local_axis2(match is_left {
-            true => Vec3::Y,
-            false => -Vec3::Y,
+        .local_axis2(if wheel_num % 2 == 0 {
+            Vec3::Y
+        } else {
+            -Vec3::Y
         })
         // .local_basis1(Quat::from_axis_angle(Vec3::Y, 0.)) // hackfix, prevents jumping on collider edges
         .local_anchor1(anchor)
-        // TODO: move wheel to the inside, but avoid collissions with body
         .local_anchor2(Vec3::new(
             0.,
             wheel_half_height + wheel_border_radius + 0.,
@@ -150,7 +161,7 @@ fn spawn_wheel(
         // .set_motor(JointAxis::Y, 0., 0., 1e6, 1e3)
         .build();
 
-    commands
+    let wheel_id = commands
         .spawn(PbrBundle {
             mesh: wheel_mesh,
             material,
@@ -171,5 +182,21 @@ fn spawn_wheel(
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
         ))
         // .insert(Restitution::coefficient(0.5))
-        .insert(ImpulseJoint::new(body_entity, joint));
+        .insert(ImpulseJoint::new(body_entity, joint))
+        .id();
+
+    if wheel_num / 2 == 0 {
+        commands.entity(wheel_id).insert(FrontWheel);
+    } else {
+        commands.entity(wheel_id).insert(RearWheel);
+    }
+}
+
+fn steering(
+    controls: Res<ControlsState>, /*, mut query: Query<(&FrontWheel, &mut ImpulseJoint)> */
+) {
+    let _ = &dbg!(controls.steering_wheel_degrees);
+    // for (_, _) in query.iter_mut() {
+    //     joint.data.set_local_axis1(Vec3::X * PI * controls.steering_wheel_degrees / 900.);
+    // }
 }

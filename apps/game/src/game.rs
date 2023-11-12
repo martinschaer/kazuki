@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::plugins::CarPlugin;
+use crate::plugins::ControlsPlugin;
 use crate::plugins::MainScenePlugin;
 use bevy::asset::ChangeWatcher;
 use bevy::window::WindowResized;
@@ -34,6 +35,7 @@ pub fn run() {
         .add_plugins(FrameTimeDiagnosticsPlugin)
         .add_plugins(MainScenePlugin)
         .add_plugins(CarPlugin)
+        .add_plugins(ControlsPlugin)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default())
         .add_systems(Update, on_resize_system)
