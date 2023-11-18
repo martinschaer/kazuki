@@ -99,7 +99,7 @@ fn setup_3d(
                 .insert(Collider::cuboid(16., 0.1, 16.))
                 .insert(CollisionGroups::new(
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
-                    bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL),
+                    bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL | GROUP_BODY),
                 ))
                 .insert(TransformBundle::from(Transform::from_xyz(0., -0.05, 0.)));
         });

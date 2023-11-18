@@ -103,13 +103,8 @@ fn turn_steering_wheel(
 ) {
     let win_w = window_query.single().width();
     let action_state = query.single_mut();
-    match action_state.axis_pair(BoxMovement::MousePosition) {
-        Some(x) => {
-            // TODO: make magic numbers configurable
-            controls.steering_wheel_degrees = (x.x() / win_w) * 900. - 450.;
-        }
-        None => {
-            println!("No mouse position");
-        }
+    if let Some(x) = action_state.axis_pair(BoxMovement::MousePosition) {
+        // TODO: make magic numbers configurable
+        controls.steering_wheel_degrees = (x.x() / win_w) * 900. - 450.;
     }
 }
