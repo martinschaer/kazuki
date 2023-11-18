@@ -1,11 +1,9 @@
-use std::time::Duration;
-
 use crate::plugins::CarPlugin;
 use crate::plugins::ControlsPlugin;
 use crate::plugins::MainScenePlugin;
-use bevy::asset::ChangeWatcher;
 use bevy::window::WindowResized;
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{
     prelude::{NoUserData, RapierPhysicsPlugin},
     render::RapierDebugRenderPlugin,
@@ -27,10 +25,7 @@ pub fn run() {
                     }),
                     ..default()
                 })
-                .set(AssetPlugin {
-                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-                    ..default()
-                }),
+                .set(AssetPlugin::default()),
         )
         .add_plugins(FrameTimeDiagnosticsPlugin)
         .add_plugins(MainScenePlugin)
@@ -38,12 +33,13 @@ pub fn run() {
         .add_plugins(ControlsPlugin)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default())
+        .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Update, on_resize_system)
         .run();
 }
 
 fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
-    for e in resize_reader.iter() {
+    for e in resize_reader.read() {
         println!("{:.1} x {:.1}", e.width, e.height);
     }
 }
