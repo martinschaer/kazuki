@@ -89,23 +89,23 @@ fn setup(
     // wheels
     let wheels_anchors = [
         Vec3::new(
-            car_specs.width / -2. - car_specs.wheel_half_height,
-            -car_specs.height + car_specs.wheel_diameter * 0.5,
+            car_specs.width * -0.5,
+            -car_specs.height,
             car_specs.length * -0.3,
         ),
         Vec3::new(
-            car_specs.width / 2. + car_specs.wheel_half_height,
-            -car_specs.height + car_specs.wheel_diameter * 0.5,
+            car_specs.width * 0.5,
+            -car_specs.height,
             car_specs.length * -0.3,
         ),
         Vec3::new(
-            car_specs.width / -2. - car_specs.wheel_half_height,
-            -car_specs.height + car_specs.wheel_diameter * 0.5,
+            car_specs.width * -0.5,
+            -car_specs.height,
             car_specs.length * 0.4,
         ),
         Vec3::new(
-            car_specs.width / 2. + car_specs.wheel_half_height,
-            -car_specs.height + car_specs.wheel_diameter * 0.5,
+            car_specs.width * 0.5,
+            -car_specs.height,
             car_specs.length * 0.4,
         ),
     ];
@@ -118,6 +118,7 @@ fn setup(
             &mut meshes,
             &car_specs,
             body_entity,
+            // car_transform,
             *anchor,
             i,
         );
@@ -130,6 +131,7 @@ fn spawn_wheel(
     meshes: &mut ResMut<Assets<Mesh>>,
     car_specs: &CarSpecs,
     body_entity: Entity,
+    // car_transform: Transform,
     anchor: Vec3,
     wheel_num: usize,
 ) {
@@ -147,15 +149,14 @@ fn spawn_wheel(
     );
 
     let axel_joint = GenericJointBuilder::new(JointAxesMask::LOCKED_REVOLUTE_AXES)
-        .local_axis1(if wheel_num % 2 == 0 {
+        .local_axis1(Vec3::X)
+        .local_axis2(if wheel_num % 2 == 0 {
             Vec3::Y
         } else {
             -Vec3::Y
         })
-        .local_axis2(Vec3::X)
         // .local_basis1(Quat::from_axis_angle(Vec3::Y, 0.)) // hackfix, prevents jumping on collider edges
-        .local_anchor1(Vec3::new(0., 0., 0.))
-        .local_anchor2(Vec3::new(
+        .local_anchor1(Vec3::new(
             if wheel_num % 2 == 0 {
                 -car_specs.wheel_half_height
             } else {
@@ -164,10 +165,41 @@ fn spawn_wheel(
             0.,
             0.,
         ))
+        .local_anchor2(Vec3::new(0., 0., 0.))
         // .set_motor(JointAxis::Y, 0., 0., 1e6, 1e3)
         .build();
 
-    let joint = FixedJointBuilder::new().local_anchor1(anchor);
+    // let joint = FixedJointBuilder::new().local_anchor1(anchor);
+    let upright_joint = GenericJointBuilder::new(JointAxesMask::LOCKED_REVOLUTE_AXES)
+        .local_axis2(Vec3::Y)
+        .local_axis1(Vec3::Y)
+        .local_anchor2(Vec3::new(0., 0., 0.))
+        .local_anchor1(anchor)
+        .build();
+
+    // upright
+    let upright_entity = commands
+        .spawn(PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Box {
+                min_x: -0.1,
+                max_x: 0.1,
+                min_y: car_specs.height / -2.,
+                max_y: car_specs.height / 2.,
+                min_z: -0.1,
+                max_z: 0.1,
+            })),
+            // material: suspension_mat_handle.clone(),
+            // transform: Transform::from_translation(
+            //     car_transform.translation + car_transform.rotation.mul_vec3(anchor),
+            // ),
+            // transform: Transform::from_translation(anchor),
+            ..default()
+        })
+        .insert(RigidBody::Dynamic)
+        .insert(AdditionalMassProperties::Mass(0.2))
+        .insert(Upright)
+        .insert(ImpulseJoint::new(body_entity, upright_joint))
+        .id();
 
     // wheel
     let wheel_entity = commands
@@ -183,7 +215,7 @@ fn spawn_wheel(
                 0.,
                 (if wheel_num % 2 == 0 { 90_f32 } else { 270_f32 }).to_radians(),
             ),
-            translation: Vec3::new(if wheel_num % 2 == 0 { -0.4 } else { 0.4 }, 0., 0.),
+            // translation: Vec3::new(if wheel_num % 2 == 0 { -0.4 } else { 0.4 }, 0., 0.),
             ..default()
         })
         .insert(RigidBody::Dynamic)
@@ -193,47 +225,14 @@ fn spawn_wheel(
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
         ))
         // .insert(Restitution::coefficient(0.5))
-        // .insert(ImpulseJoint::new(upright_entity, axel_joint))
+        .insert(ImpulseJoint::new(upright_entity, axel_joint))
         .id();
-
-    // upright
-    let upright_entity = commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Box {
-                min_x: -0.1,
-                max_x: 0.1,
-                min_y: car_specs.height / -2.,
-                max_y: 0.95 / 2.,
-                min_z: -0.1,
-                max_z: 0.1,
-            })),
-            // material: suspension_mat_handle.clone(),
-            // transform: Transform::from_translation(
-            //     car_transform.translation + car_transform.rotation.mul_vec3(anchor),
-            // ),
-            transform: Transform::from_translation(anchor),
-            ..default()
-        })
-        .insert(RigidBody::KinematicPositionBased)
-        .insert(Upright)
-        .insert(ImpulseJoint::new(body_entity, joint))
-        .insert(ImpulseJoint::new(wheel_entity, axel_joint))
-        // .with_children(|parent| {})
-        .id();
-
-    commands
-        .entity(upright_entity)
-        .insert_children(0, &[wheel_entity]);
 
     if wheel_num / 2 == 0 {
         commands.entity(wheel_entity).insert(FrontWheel);
     } else {
         commands.entity(wheel_entity).insert(RearWheel);
     }
-    commands
-        .entity(body_entity)
-        // .insert(ImpulseJoint::new(upright_entity, joint))
-        .insert_children(0, &[upright_entity]);
 }
 
 fn steering(controls: Res<ControlsState>, mut query: Query<(&Upright, &mut Transform)>) {
