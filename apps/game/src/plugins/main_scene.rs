@@ -19,7 +19,7 @@ pub const GROUP_WHEEL: u32 = 0b100;
 struct DebugText;
 
 #[derive(Component)]
-struct Player {
+struct CubeObstacle {
     index: u8,
 }
 
@@ -36,7 +36,7 @@ impl Plugin for MainScenePlugin {
     }
 }
 
-fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &Player)>) {
+fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &CubeObstacle)>) {
     for (mut transform, player) in &mut players {
         transform.translation = Vec3::new(
             player.index as f32 - 2.5,
@@ -55,10 +55,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
 
     // 2d text
-    commands.spawn(Text2dBundle {
-        text: Text::from_section("Kazuki", text_style.clone()).clone(),
-        ..default()
-    });
+    commands
+        .spawn(Text2dBundle {
+            text: Text::from_section("Kazuki", text_style.clone()).clone(),
+            ..default()
+        })
+        .insert(Name::new("Kazuki Title"));
 
     // UI text
     commands.spawn((
@@ -78,6 +80,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             }),
         ]),
         DebugText,
+        Name::new("DebugText"),
     ));
 }
 
@@ -93,6 +96,7 @@ fn setup_3d(
             material: materials.add(Color::hsla(180.0, 0.5, 0.95, 0.1).into()),
             ..default()
         })
+        .insert(Name::new("Floor"))
         .with_children(|children| {
             children
                 .spawn(RigidBody::Fixed)
@@ -113,7 +117,8 @@ fn setup_3d(
                 transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
                 ..default()
             },))
-            .insert(Player { index: x })
+            .insert(CubeObstacle { index: x })
+            .insert(Name::new("Cube"))
             .insert(RigidBody::KinematicPositionBased)
             .insert(Collider::cuboid(0.25, 0.25, 0.25))
             .insert(CollisionGroups::new(
