@@ -1,22 +1,21 @@
-use crate::plugins::CarPlugin;
-use crate::plugins::ControlsPlugin;
-use crate::plugins::CubesPlugin;
-use crate::plugins::MainScenePlugin;
-use bevy::window::WindowResized;
+#[path = "../src/plugins/mod.rs"]
+mod plugins;
+
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{
     prelude::{NoUserData, RapierPhysicsPlugin},
     render::RapierDebugRenderPlugin,
 };
+use plugins::MainScenePlugin;
 
-pub fn run() {
+pub fn main() {
     App::new()
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        title: "Kazuki!".into(),
+                        title: "Joints".into(),
                         resolution: (640., 480.).into(),
                         present_mode: PresentMode::AutoVsync,
                         canvas: Some("main canvas".into()),
@@ -30,18 +29,8 @@ pub fn run() {
         )
         .add_plugins(FrameTimeDiagnosticsPlugin)
         .add_plugins(MainScenePlugin)
-        .add_plugins(CarPlugin)
-        .add_plugins(ControlsPlugin)
-        .add_plugins(CubesPlugin)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
-        .add_systems(Update, on_resize_system)
         .run();
-}
-
-fn on_resize_system(mut resize_reader: EventReader<WindowResized>) {
-    for e in resize_reader.read() {
-        println!("{:.1} x {:.1}", e.width, e.height);
-    }
 }
