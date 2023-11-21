@@ -1,5 +1,6 @@
 #[path = "../src/plugins/mod.rs"]
 mod plugins;
+mod src;
 
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -8,6 +9,7 @@ use bevy_rapier3d::{
     render::RapierDebugRenderPlugin,
 };
 use plugins::MainScenePlugin;
+use src::JointsPlugin;
 
 pub fn main() {
     App::new()
@@ -32,5 +34,6 @@ pub fn main() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
+        .add_plugins(JointsPlugin)
         .run();
 }
