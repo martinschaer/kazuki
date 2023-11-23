@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::{
-    Collider, GenericJointBuilder, ImpulseJoint, JointAxesMask, RigidBody, JointAxis,
+    Collider, GenericJoint, GenericJointBuilder, ImpulseJoint, JointAxesMask, JointAxis, RigidBody,
 };
 
 use super::JointsPlugin;
@@ -12,6 +12,31 @@ impl Plugin for JointsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup);
     }
+}
+
+fn make_wheel_joint(
+    locked_axes: JointAxesMask,
+    parent_axis: Vec3,
+    child_axis: Vec3,
+    parent_anchor: Vec3,
+    child_anchor: Vec3,
+    // (pos, vel, stiffness, damping)
+    motor: (f32, f32, f32, f32),
+) -> GenericJoint {
+    let unlocked_axis = if (JointAxesMask::all() - locked_axes).contains(JointAxesMask::ANG_X) {
+        JointAxis::AngX
+    } else if (JointAxesMask::all() - locked_axes).contains(JointAxesMask::ANG_Y) {
+        JointAxis::AngY
+    } else {
+        JointAxis::AngZ
+    };
+    GenericJointBuilder::new(locked_axes)
+        .local_axis2(parent_axis)
+        .local_axis1(child_axis)
+        .local_anchor2(parent_anchor)
+        .local_anchor1(child_anchor)
+        .set_motor(unlocked_axis, motor.0, motor.1, motor.2, motor.3)
+        .build()
 }
 
 fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
@@ -46,21 +71,20 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         .id();
 
     // Joint
-    let joint = GenericJointBuilder::new(
+    let wheel_joint = make_wheel_joint(
         JointAxesMask::X
             | JointAxesMask::Y
             | JointAxesMask::Z
             | JointAxesMask::ANG_Y
             | JointAxesMask::ANG_Z,
-    )
-    .local_axis2(-Vec3::Y)
-    .local_axis1(Vec3::X)
-    .local_anchor2(Vec3::new(0., 0.6, 0.))
-    .local_anchor1(Vec3::new(0.6, 0., 0.))
-    .set_motor(JointAxis::AngX, 0., 1e2, 1e6, 1e3)
-    .build();
+        -Vec3::Y,
+        Vec3::X,
+        Vec3::new(0., 0.6, 0.),
+        Vec3::new(0.6, 0., 0.),
+        (0., 1e2, 1e6, 1e3),
+    );
 
     commands
         .entity(wheel)
-        .insert(ImpulseJoint::new(cube, joint));
+        .insert(ImpulseJoint::new(cube, wheel_joint));
 }
