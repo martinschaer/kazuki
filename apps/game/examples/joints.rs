@@ -3,7 +3,10 @@ mod plugins;
 mod src;
 
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::{
+    prelude::*,
+    quick::{ResourceInspectorPlugin, WorldInspectorPlugin},
+};
 use bevy_rapier3d::{
     prelude::{NoUserData, RapierPhysicsPlugin},
     render::RapierDebugRenderPlugin,
@@ -11,8 +14,16 @@ use bevy_rapier3d::{
 use plugins::MainScenePlugin;
 use src::JointsPlugin;
 
+#[derive(Reflect, Resource, Default, InspectorOptions)]
+#[reflect(Resource, InspectorOptions)]
+pub struct Configuration {
+    pub wheel_vel: f32,
+}
+
 pub fn main() {
     App::new()
+        .init_resource::<Configuration>()
+        .register_type::<Configuration>()
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
@@ -34,6 +45,7 @@ pub fn main() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
+        .add_plugins(ResourceInspectorPlugin::<Configuration>::default())
         .add_plugins(JointsPlugin)
         .run();
 }

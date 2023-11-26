@@ -7,11 +7,27 @@ use bevy_rapier3d::prelude::{
     JointAxesMask, JointAxis, MultibodyJoint, RigidBody,
 };
 
+use crate::Configuration;
+
 use super::JointsPlugin;
 
 impl Plugin for JointsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup);
+        app.add_systems(Startup, setup).add_systems(Update, update);
+    }
+}
+
+#[derive(Component)]
+struct WheelJoint;
+
+#[derive(Component)]
+struct UprightJoint;
+
+fn update(config: Res<Configuration>, mut q: Query<&mut MultibodyJoint, With<WheelJoint>>) {
+    for mut joint in q.iter_mut() {
+        joint
+            .data
+            .set_motor_velocity(JointAxis::AngX, config.wheel_vel, 1.);
     }
 }
 
@@ -105,22 +121,26 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
     commands
         .entity(wheel)
-        // with this it the motor doesn't work
-        .insert(MultibodyJoint::new(upright, wheel_joint));
+        // with this the motor doesn't work
+        .insert((MultibodyJoint::new(upright, wheel_joint), WheelJoint));
     // with this the motor works
     // .insert(ImpulseJoint::new(upright, wheel_joint));
 
     // Upright - Body Joint
     let upright_joint = make_joint(
-        JointAxesMask::Y | JointAxesMask::Z | JointAxesMask::ANG_Y | JointAxesMask::ANG_Z,
+        JointAxesMask::X
+            | JointAxesMask::Y
+            | JointAxesMask::Z
+            | JointAxesMask::ANG_Y
+            | JointAxesMask::ANG_Z,
         Vec3::Y,
         Vec3::Y,
-        Vec3::new(-0.6, 0., 0.),
-        Vec3::new(0.6, 0., 0.),
+        Vec3::new(0., 0., 0.),
+        Vec3::new(1.2, 0., 0.),
         (0., 0., 0., 0.),
     );
 
     commands
         .entity(upright)
-        .insert(ImpulseJoint::new(body, upright_joint));
+        .insert((ImpulseJoint::new(body, upright_joint), UprightJoint));
 }
