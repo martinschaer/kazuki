@@ -13,7 +13,8 @@ use super::JointsPlugin;
 
 impl Plugin for JointsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup).add_systems(Update, update);
+        app.add_systems(Startup, setup)
+            .add_systems(Update, (update_wheel, update_upright));
     }
 }
 
@@ -23,44 +24,72 @@ struct WheelJoint;
 #[derive(Component)]
 struct UprightJoint;
 
-fn update(config: Res<Configuration>, mut q: Query<&mut MultibodyJoint, With<WheelJoint>>) {
+#[derive(Component)]
+struct Upright;
+
+fn update_wheel(config: Res<Configuration>, mut q: Query<&mut MultibodyJoint, With<WheelJoint>>) {
     for mut joint in q.iter_mut() {
         joint
             .data
-            .set_motor_velocity(JointAxis::AngX, config.wheel_vel, 1.);
+            .set_motor_velocity(JointAxis::AngX, config.wheel_vel, 1.)
+            .set_local_anchor2(Vec3::new(0., config.wheel_offset, 0.))
+            .set_local_anchor1(Vec3::new(config.wheel_offset, 0., 0.));
     }
 }
 
-fn make_joint(
-    locked_axes: JointAxesMask,
-    parent_axis: Vec3,
-    child_axis: Vec3,
-    parent_anchor: Vec3,
-    child_anchor: Vec3,
-    // (pos, vel, stiffness, damping)
-    motor: (f32, f32, f32, f32),
-) -> GenericJoint {
-    let unlocked_axis = if (JointAxesMask::all() - locked_axes).contains(JointAxesMask::ANG_X) {
-        Some(JointAxis::AngX)
-    } else if (JointAxesMask::all() - locked_axes).contains(JointAxesMask::ANG_Y) {
-        Some(JointAxis::AngY)
-    } else if (JointAxesMask::all() - locked_axes).contains(JointAxesMask::ANG_Z) {
-        Some(JointAxis::AngZ)
-    } else {
-        None
-    };
-    let mut builder = GenericJointBuilder::new(locked_axes)
-        .local_axis2(parent_axis)
-        .local_axis1(child_axis)
-        .local_anchor2(parent_anchor)
-        .local_anchor1(child_anchor);
-    if let Some(u_a) = unlocked_axis {
-        builder = builder.set_motor(u_a, motor.0, motor.1, motor.2, motor.3);
-    }
+fn make_front_upright_wheel_joint(offset: f32) -> GenericJoint {
+    let mut builder = GenericJointBuilder::new(
+        JointAxesMask::X
+            | JointAxesMask::Y
+            | JointAxesMask::Z
+            | JointAxesMask::ANG_Y
+            | JointAxesMask::ANG_Z,
+    )
+    .local_axis2(-Vec3::Y)
+    .local_axis1(Vec3::X)
+    .local_anchor2(Vec3::new(0., offset, 0.))
+    .local_anchor1(Vec3::new(offset, 0., 0.));
+    let unlocked_axis = JointAxis::AngX;
+    builder = builder.set_motor(unlocked_axis, 0., 5., 0., 0.);
     builder.build()
 }
 
-fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
+// Working
+fn update_upright(config: Res<Configuration>, mut q: Query<&mut Transform, With<Upright>>) {
+    for mut transform in q.iter_mut() {
+        transform.rotation = Quat::from_rotation_y(config.steering_angle / 180. * PI);
+    }
+}
+// TODO: why doesn't this work? is there another way to apply a rotational force?
+// fn update_upright(config: Res<Configuration>, mut q: Query<&mut ImpulseJoint, With<UprightJoint>>) {
+//     for mut joint in q.iter_mut() {
+//         joint.data.set_motor(JointAxis::AngX, config.steering_angle / 180. * PI, 5., 0., 0.);
+//     }
+// }
+
+fn make_front_upright_chasis_joint(offset: f32) -> GenericJoint {
+    let builder = GenericJointBuilder::new(
+        // JointAxesMask::X // this is the vertical axis
+        JointAxesMask::Y
+            | JointAxesMask::Z
+            // | JointAxesMask::ANG_X // this is the rotation axis
+            | JointAxesMask::ANG_Y
+            | JointAxesMask::ANG_Z,
+    )
+    .local_axis2(Vec3::Y)
+    .local_axis1(Vec3::Y)
+    .local_anchor2(Vec3::new(0., 0., 0.))
+    .local_anchor1(Vec3::new(offset, 0., 0.))
+    // .limits(JointAxis::AngX, [PI * -0.5, PI * 0.5])
+    .limits(JointAxis::X, [-1., 0.]);
+    builder.build()
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut config: ResMut<Configuration>,
+) {
     let mesh = meshes.add(Mesh::from(shape::Cube { size: 1. }));
     let upright_mesh = meshes.add(Mesh::from(shape::Cube { size: 0.4 }));
     let wheel_mesh = meshes.add(Mesh::from(shape::Cylinder {
@@ -68,6 +97,11 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         height: 1.,
         ..default()
     }));
+
+    config.wheel_offset = 0.6;
+    config.wheel_vel = 5.;
+    config.upright_offset = 0.6;
+    config.steering_angle = 0.; //15.;
 
     let body = commands
         .spawn(PbrBundle {
@@ -89,6 +123,7 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         .insert(RigidBody::Dynamic)
         .insert(Collider::cuboid(0.2, 0.2, 0.2))
         .insert(ColliderMassProperties::Density(4.))
+        .insert(Upright)
         .id();
 
     let wheel = commands
@@ -106,39 +141,14 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         .id();
 
     // Wheel - Upright Joint
-    let wheel_joint = make_joint(
-        JointAxesMask::X
-            | JointAxesMask::Y
-            | JointAxesMask::Z
-            | JointAxesMask::ANG_Y
-            | JointAxesMask::ANG_Z,
-        -Vec3::Y,
-        Vec3::X,
-        Vec3::new(0., 0.6, 0.),
-        Vec3::new(0.6, 0., 0.),
-        (0., 5., 0., 0.),
-    );
+    let wheel_joint = make_front_upright_wheel_joint(config.wheel_offset);
 
     commands
         .entity(wheel)
-        // with this the motor doesn't work
         .insert((MultibodyJoint::new(upright, wheel_joint), WheelJoint));
-    // with this the motor works
-    // .insert(ImpulseJoint::new(upright, wheel_joint));
 
     // Upright - Body Joint
-    let upright_joint = make_joint(
-        JointAxesMask::X
-            | JointAxesMask::Y
-            | JointAxesMask::Z
-            | JointAxesMask::ANG_Y
-            | JointAxesMask::ANG_Z,
-        Vec3::Y,
-        Vec3::Y,
-        Vec3::new(0., 0., 0.),
-        Vec3::new(1.2, 0., 0.),
-        (0., 0., 0., 0.),
-    );
+    let upright_joint = make_front_upright_chasis_joint(1.2);
 
     commands
         .entity(upright)

@@ -18,6 +18,9 @@ use src::JointsPlugin;
 #[reflect(Resource, InspectorOptions)]
 pub struct Configuration {
     pub wheel_vel: f32,
+    pub wheel_offset: f32,
+    pub upright_offset: f32,
+    pub steering_angle: f32,
 }
 
 pub fn main() {
