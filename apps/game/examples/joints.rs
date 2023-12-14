@@ -1,27 +1,19 @@
+#[path = "../src/car/mod.rs"]
+mod car;
 #[path = "../src/plugins/mod.rs"]
 mod plugins;
 mod src;
 
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
-use bevy_inspector_egui::{
-    prelude::*,
-    quick::{ResourceInspectorPlugin, WorldInspectorPlugin},
-};
+use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy_rapier3d::{
     prelude::{NoUserData, RapierPhysicsPlugin},
     render::RapierDebugRenderPlugin,
 };
+
 use plugins::MainScenePlugin;
 use src::JointsPlugin;
-
-#[derive(Reflect, Resource, Default, InspectorOptions)]
-#[reflect(Resource, InspectorOptions)]
-pub struct Configuration {
-    pub wheel_vel: f32,
-    pub wheel_offset: f32,
-    pub upright_offset: f32,
-    pub steering_angle: f32,
-}
+use car::Configuration;
 
 pub fn main() {
     App::new()

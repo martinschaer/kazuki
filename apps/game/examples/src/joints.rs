@@ -3,86 +3,27 @@ use std::f32::consts::PI;
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::{
-    Collider, ColliderMassProperties, GenericJoint, GenericJointBuilder, ImpulseJoint,
-    JointAxesMask, JointAxis, MultibodyJoint, RigidBody,
+    Collider, ColliderMassProperties, ImpulseJoint, MultibodyJoint, RigidBody,
 };
 
-use crate::Configuration;
-
 use super::JointsPlugin;
+use crate::car::{
+    dynamics::{
+        suspension::{
+            make_front_upright_chasis_joint, make_front_upright_wheel_joint, update_upright,
+            update_wheel,
+        },
+        UprightJoint, WheelJoint,
+    },
+    Upright,
+};
+use crate::Configuration;
 
 impl Plugin for JointsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
             .add_systems(Update, (update_wheel, update_upright));
     }
-}
-
-#[derive(Component)]
-struct WheelJoint;
-
-#[derive(Component)]
-struct UprightJoint;
-
-#[derive(Component)]
-struct Upright;
-
-fn update_wheel(config: Res<Configuration>, mut q: Query<&mut MultibodyJoint, With<WheelJoint>>) {
-    for mut joint in q.iter_mut() {
-        joint
-            .data
-            .set_motor_velocity(JointAxis::AngX, config.wheel_vel, 1.)
-            .set_local_anchor2(Vec3::new(0., config.wheel_offset, 0.))
-            .set_local_anchor1(Vec3::new(config.wheel_offset, 0., 0.));
-    }
-}
-
-fn make_front_upright_wheel_joint(offset: f32) -> GenericJoint {
-    let mut builder = GenericJointBuilder::new(
-        JointAxesMask::X
-            | JointAxesMask::Y
-            | JointAxesMask::Z
-            | JointAxesMask::ANG_Y
-            | JointAxesMask::ANG_Z,
-    )
-    .local_axis2(-Vec3::Y)
-    .local_axis1(Vec3::X)
-    .local_anchor2(Vec3::new(0., offset, 0.))
-    .local_anchor1(Vec3::new(offset, 0., 0.));
-    let unlocked_axis = JointAxis::AngX;
-    builder = builder.set_motor(unlocked_axis, 0., 5., 0., 0.);
-    builder.build()
-}
-
-// Working
-fn update_upright(config: Res<Configuration>, mut q: Query<&mut Transform, With<Upright>>) {
-    for mut transform in q.iter_mut() {
-        transform.rotation = Quat::from_rotation_y(config.steering_angle / 180. * PI);
-    }
-}
-// TODO: why doesn't this work? is there another way to apply a rotational force?
-// fn update_upright(config: Res<Configuration>, mut q: Query<&mut ImpulseJoint, With<UprightJoint>>) {
-//     for mut joint in q.iter_mut() {
-//         joint.data.set_motor(JointAxis::AngX, config.steering_angle / 180. * PI, 5., 0., 0.);
-//     }
-// }
-
-fn make_front_upright_chasis_joint(offset: f32) -> GenericJoint {
-    let builder = GenericJointBuilder::new(
-        // JointAxesMask::X // this is the vertical axis
-        JointAxesMask::Y
-            | JointAxesMask::Z
-            // | JointAxesMask::ANG_X // this is the rotation axis
-            | JointAxesMask::ANG_Y
-            | JointAxesMask::ANG_Z,
-    )
-    .local_axis2(Vec3::Y)
-    .local_axis1(Vec3::Y)
-    .local_anchor2(Vec3::new(0., 0., 0.))
-    .local_anchor1(Vec3::new(offset, 0., 0.))
-    // .limits(JointAxis::AngX, [PI * -0.5, PI * 0.5])
-    .limits(JointAxis::X, [-1., 0.]);
-    builder.build()
 }
 
 fn setup(
