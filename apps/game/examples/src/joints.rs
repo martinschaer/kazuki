@@ -10,8 +10,8 @@ use super::JointsPlugin;
 use crate::car::{
     dynamics::{
         suspension::{
-            make_front_upright_chasis_joint, make_front_upright_wheel_joint, update_upright,
-            update_wheel,
+            make_front_upright_chasis_joint, make_front_upright_wheel_joint, system_update_upright,
+            system_update_wheel,
         },
         UprightJoint, WheelJoint,
     },
@@ -22,7 +22,7 @@ use crate::Configuration;
 impl Plugin for JointsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
-            .add_systems(Update, (update_wheel, update_upright));
+            .add_systems(Update, (system_update_wheel, system_update_upright));
     }
 }
 

@@ -10,10 +10,7 @@ use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
 use std::f32::consts::PI;
 
 use super::MainScenePlugin;
-
-pub const GROUP_SURFACE: u32 = 0b01;
-pub const GROUP_BODY: u32 = 0b10;
-pub const GROUP_WHEEL: u32 = 0b100;
+use crate::plugins::{GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL};
 
 #[derive(Component)]
 struct DebugText;

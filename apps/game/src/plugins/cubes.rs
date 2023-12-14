@@ -1,10 +1,10 @@
-use crate::plugins::main_scene::{GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL};
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
 use std::f32::consts::PI;
 
 use super::CubesPlugin;
+use crate::plugins::{GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL};
 
 #[derive(Component)]
 struct CubeObstacle {

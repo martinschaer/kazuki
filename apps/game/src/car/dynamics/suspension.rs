@@ -4,9 +4,13 @@ use bevy_rapier3d::prelude::{
 };
 use std::f32::consts::PI;
 
-use crate::car::{Configuration, Upright, dynamics::WheelJoint};
+use crate::car::{dynamics::WheelJoint, Configuration, Upright};
+use crate::plugins::controls::ControlsState;
 
-pub fn update_wheel(config: Res<Configuration>, mut q: Query<&mut MultibodyJoint, With<WheelJoint>>) {
+pub fn system_update_wheel(
+    config: Res<Configuration>,
+    mut q: Query<&mut MultibodyJoint, With<WheelJoint>>,
+) {
     for mut joint in q.iter_mut() {
         joint
             .data
@@ -33,8 +37,29 @@ pub fn make_front_upright_wheel_joint(offset: f32) -> GenericJoint {
     builder.build()
 }
 
+pub fn system_steering(
+    controls: Res<ControlsState>,
+    // mut query: Query<(&Upright, &mut ImpulseJoint)>,
+    mut q: Query<&mut Transform, With<Upright>>,
+) {
+    let turning_degrees = 90.;
+    let steering_wheel_degrees_range = 900.;
+    let angle = (turning_degrees / 360.) * 2. * PI * controls.steering_wheel_degrees
+        / steering_wheel_degrees_range;
+    println!("angle: {}", angle);
+    // for (_, mut joint) in query.iter_mut() {
+    //     joint.data.set_motor_position(JointAxis::Y, angle, 1e9, 1e3);
+    // }
+    for mut transform in q.iter_mut() {
+        transform.rotation = Quat::from_rotation_y(angle / 180. * PI);
+    }
+}
+
 // Working
-pub fn update_upright(config: Res<Configuration>, mut q: Query<&mut Transform, With<Upright>>) {
+pub fn system_update_upright(
+    config: Res<Configuration>,
+    mut q: Query<&mut Transform, With<Upright>>,
+) {
     for mut transform in q.iter_mut() {
         transform.rotation = Quat::from_rotation_y(config.steering_angle / 180. * PI);
     }
