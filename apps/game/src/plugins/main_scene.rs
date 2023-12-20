@@ -4,8 +4,9 @@ use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
-    render::camera::ScalingMode,
+    // render::camera::ScalingMode,
 };
+use bevy_flycam::prelude::*;
 use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
 use std::f32::consts::PI;
 
@@ -19,6 +20,7 @@ impl Plugin for MainScenePlugin {
     fn build(&self, app: &mut App) {
         app
             // .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
+            .add_plugins(NoCameraPlayerPlugin)
             .add_systems(Startup, setup)
             .add_systems(Startup, setup_3d)
             .add_systems(Startup, setup_camera)
@@ -159,13 +161,13 @@ fn setup_camera(
     // Camera
     commands.spawn((
         Camera3dBundle {
-            projection: OrthographicProjection {
-                scale: 5.0,
-                scaling_mode: ScalingMode::FixedVertical(2.0),
-                ..default()
-            }
-            .into(),
-            transform: Transform::from_xyz(-4.0, 4.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+            // projection: OrthographicProjection {
+            //     scale: 5.0,
+            //     scaling_mode: ScalingMode::FixedVertical(2.0),
+            //     ..default()
+            // }
+            // .into(),
+            transform: Transform::from_xyz(0.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
@@ -180,6 +182,7 @@ fn setup_camera(
             },
             ..default()
         },
+        FlyCam,
         // UiCameraConfig { show_ui: false },
     ));
 

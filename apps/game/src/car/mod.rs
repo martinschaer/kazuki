@@ -5,8 +5,13 @@ pub mod dynamics;
 pub mod objects;
 
 #[derive(Component)]
-pub struct Upright;
+pub struct Upright {
+    pub is_left: bool,
+    pub is_front: bool,
+}
 
+// TODO: refactor to Wheel { is_front, is_left } unless its more performant as different Components
+// for querying
 #[derive(Component)]
 pub struct FrontWheel;
 
@@ -20,6 +25,7 @@ pub struct Configuration {
     pub wheel_offset: f32,
     pub upright_offset: f32,
     pub steering_angle: f32,
+    pub enable_physics: bool,
 }
 
 #[derive(Resource)]
@@ -29,6 +35,7 @@ pub struct CarSpecs {
     pub length: f32,
     pub wheel_half_height: f32,
     pub wheel_diameter: f32,
+    pub wheel_offset: f32,
     pub mass: f32,
     pub wheel_mass: f32,
     pub upright_mass: f32,
@@ -42,6 +49,7 @@ impl Default for CarSpecs {
             width: 2.,
             wheel_half_height: 0.4,
             wheel_diameter: 0.72,
+            wheel_offset: 0.2,
             mass: 796.,
             wheel_mass: 2.5,
             upright_mass: 2.5,

@@ -1,19 +1,18 @@
-use std::f32::consts::FRAC_PI_2;
-
 use bevy::{
     app::{App, Plugin},
     prelude::*,
 };
 use bevy_rapier3d::prelude::*;
 
-use crate::car::{dynamics::suspension::system_steering, objects::wheels::spawn_wheel, CarSpecs};
+// dynamics::suspension::system_steering
+use crate::car::{objects::wheels::spawn_wheel, CarSpecs};
 use crate::plugins::{CarPlugin, GROUP_BODY, GROUP_SURFACE};
 
 impl Plugin for CarPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CarSpecs>()
-            .add_systems(Startup, setup);
-            // .add_systems(Update, system_steering);
+        app.init_resource::<CarSpecs>().add_systems(Startup, setup);
+        // TODO: re-introduce steering
+        // .add_systems(Update, system_steering);
     }
 }
 
@@ -23,12 +22,21 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut car_specs: ResMut<CarSpecs>,
 ) {
-    let car_transform = Transform::from_xyz(1., 2., -1.).with_rotation(Quat::from_euler(
-        EulerRot::XYZ,
-        0.,
-        FRAC_PI_2,
-        0.,
-    ));
+    let car_transform = Transform::from_xyz(0., 2., 0.);
+    let body_mat = materials.add(Color::hsla(60.0, 0.0, 0.5, 0.5).into());
+    let body_mesh = meshes.add(Mesh::from(shape::Box {
+        min_x: car_specs.width / -2.,
+        max_x: car_specs.width / 2.,
+        min_y: car_specs.height / -2.,
+        max_y: car_specs.height / 2.,
+        min_z: car_specs.length / -2.,
+        max_z: car_specs.length / 2.,
+    }));
+    let body_collider = Collider::cuboid(
+        car_specs.width / 2.,
+        car_specs.height / 2.,
+        car_specs.length / 2.,
+    );
 
     // calculate car mass
     car_specs.mass -= 4. * (car_specs.wheel_mass + car_specs.upright_mass);
@@ -36,26 +44,15 @@ fn setup(
     // body
     let body_entity = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Box {
-                min_x: car_specs.width / -2.,
-                max_x: car_specs.width / 2.,
-                min_y: car_specs.height / -2.,
-                max_y: car_specs.height / 2.,
-                min_z: car_specs.length / -2.,
-                max_z: car_specs.length / 2.,
-            })),
-            material: materials.add(Color::hsla(60.0, 0.0, 0.5, 0.5).into()),
+            mesh: body_mesh,
+            material: body_mat,
             transform: car_transform,
             ..default()
         })
         .insert(RigidBody::Dynamic)
-        .insert(Collider::cuboid(
-            car_specs.width / 2.,
-            car_specs.height / 2.,
-            car_specs.length / 2.,
-        ))
+        .insert(body_collider)
         // TODO: check if this is the total mass and not added to the guessed one from the collider
-        .insert(ColliderMassProperties::Mass(car_specs.mass))
+        // .insert(ColliderMassProperties::Mass(car_specs.mass))
         .insert(CollisionGroups::new(
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY),
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY | GROUP_SURFACE),

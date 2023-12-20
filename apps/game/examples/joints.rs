@@ -11,9 +11,9 @@ use bevy_rapier3d::{
     render::RapierDebugRenderPlugin,
 };
 
+use car::Configuration;
 use plugins::MainScenePlugin;
 use src::JointsPlugin;
-use car::Configuration;
 
 pub fn main() {
     App::new()
