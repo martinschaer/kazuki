@@ -3,10 +3,17 @@ pub mod controls;
 mod cubes;
 mod main_scene;
 
+pub enum CameraType {
+    Orthographic,
+    Fly,
+}
+
 pub struct CarPlugin;
 pub struct ControlsPlugin;
 pub struct CubesPlugin;
-pub struct MainScenePlugin;
+pub struct MainScenePlugin {
+    pub camera_type: CameraType,
+}
 
 pub const GROUP_SURFACE: u32 = 0b01;
 pub const GROUP_BODY: u32 = 0b10;

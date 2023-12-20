@@ -12,7 +12,7 @@ use bevy_rapier3d::{
 };
 
 use car::Configuration;
-use plugins::MainScenePlugin;
+use plugins::{CameraType, MainScenePlugin};
 use src::JointsPlugin;
 
 pub fn main() {
@@ -36,7 +36,9 @@ pub fn main() {
                 .set(AssetPlugin::default()),
         )
         .add_plugins(FrameTimeDiagnosticsPlugin)
-        .add_plugins(MainScenePlugin)
+        .add_plugins(MainScenePlugin {
+            camera_type: CameraType::Fly,
+        })
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())

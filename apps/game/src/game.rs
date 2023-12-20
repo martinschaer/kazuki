@@ -1,7 +1,3 @@
-use crate::plugins::CarPlugin;
-use crate::plugins::ControlsPlugin;
-use crate::plugins::CubesPlugin;
-use crate::plugins::MainScenePlugin;
 use bevy::window::WindowResized;
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::PresentMode};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -9,6 +5,8 @@ use bevy_rapier3d::{
     prelude::{NoUserData, RapierPhysicsPlugin},
     render::RapierDebugRenderPlugin,
 };
+
+use crate::plugins::{CameraType, CarPlugin, ControlsPlugin, CubesPlugin, MainScenePlugin};
 
 pub fn run() {
     App::new()
@@ -29,7 +27,9 @@ pub fn run() {
                 .set(AssetPlugin::default()),
         )
         .add_plugins(FrameTimeDiagnosticsPlugin)
-        .add_plugins(MainScenePlugin)
+        .add_plugins(MainScenePlugin {
+            camera_type: CameraType::Orthographic,
+        })
         .add_plugins(CarPlugin)
         .add_plugins(ControlsPlugin)
         .add_plugins(CubesPlugin)

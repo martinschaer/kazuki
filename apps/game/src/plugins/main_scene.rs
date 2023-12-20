@@ -4,14 +4,14 @@ use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
-    // render::camera::ScalingMode,
+    render::camera::ScalingMode,
 };
 use bevy_flycam::prelude::*;
 use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
 use std::f32::consts::PI;
 
 use super::MainScenePlugin;
-use crate::plugins::{GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL};
+use crate::plugins::{CameraType, GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL};
 
 #[derive(Component)]
 struct DebugText;
@@ -20,12 +20,19 @@ impl Plugin for MainScenePlugin {
     fn build(&self, app: &mut App) {
         app
             // .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
-            .add_plugins(NoCameraPlayerPlugin)
             .add_systems(Startup, setup)
             .add_systems(Startup, setup_3d)
-            .add_systems(Startup, setup_camera)
             .add_systems(Update, text_update_system);
         // .add_systems(Update, material_animation_system)
+        match self.camera_type {
+            CameraType::Orthographic => {
+                app.add_systems(Startup, setup_camera);
+            }
+            CameraType::Fly => {
+                app.add_plugins(NoCameraPlayerPlugin)
+                    .add_systems(Startup, setup_fly_camera);
+            }
+        };
     }
 }
 
@@ -75,7 +82,7 @@ fn setup_3d(
     // plane
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(shape::Plane::from_size(32.0).into()),
+            mesh: meshes.add(shape::Plane::from_size(64.0).into()),
             material: materials.add(Color::hsla(180.0, 0.5, 0.95, 0.1).into()),
             ..default()
         })
@@ -161,12 +168,12 @@ fn setup_camera(
     // Camera
     commands.spawn((
         Camera3dBundle {
-            // projection: OrthographicProjection {
-            //     scale: 5.0,
-            //     scaling_mode: ScalingMode::FixedVertical(2.0),
-            //     ..default()
-            // }
-            // .into(),
+            projection: OrthographicProjection {
+                scale: 5.0,
+                scaling_mode: ScalingMode::FixedVertical(2.0),
+                ..default()
+            }
+            .into(),
             transform: Transform::from_xyz(0.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
@@ -182,7 +189,6 @@ fn setup_camera(
             },
             ..default()
         },
-        FlyCam,
         // UiCameraConfig { show_ui: false },
     ));
 
@@ -237,6 +243,27 @@ fn setup_camera(
         post_processing_pass_layer,
     ));
     */
+}
+
+fn setup_fly_camera(mut commands: Commands) {
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(0.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+            camera_3d: Camera3d {
+                clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
+                    Color::BLACK,
+                ),
+                ..default()
+            },
+            camera: Camera {
+                order: 1,
+                ..default()
+            },
+            ..default()
+        },
+        FlyCam,
+        // UiCameraConfig { show_ui: false },
+    ));
 }
 
 fn text_update_system(
