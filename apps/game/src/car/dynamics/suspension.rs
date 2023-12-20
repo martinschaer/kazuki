@@ -61,27 +61,19 @@ pub fn make_front_upright_wheel_joint(abs_offset: f32, is_left: bool) -> Generic
     joint
 }
 
-// TODO: enable steering
-#[allow(dead_code)]
-pub fn system_steering(
-    controls: Res<ControlsState>,
-    // mut query: Query<(&Upright, &mut ImpulseJoint)>,
-    mut q: Query<&mut Transform, With<Upright>>,
-) {
+pub fn system_update_upright_steering(controls: Res<ControlsState>, mut q: Query<(&mut Transform, &Upright)>) {
     let turning_degrees = 90.;
     let steering_wheel_degrees_range = 900.;
-    let angle = (turning_degrees / 360.) * 2. * PI * controls.steering_wheel_degrees
-        / steering_wheel_degrees_range;
-    println!("angle: {}", angle);
-    // for (_, mut joint) in query.iter_mut() {
-    //     joint.data.set_motor_position(JointAxis::Y, angle, 1e9, 1e3);
-    // }
-    for mut transform in q.iter_mut() {
-        transform.rotation = Quat::from_rotation_y(angle / 180. * PI);
+    let angle = turning_degrees * controls.steering_wheel_degrees / steering_wheel_degrees_range
+        - turning_degrees * 0.5;
+    for (mut transform, upright) in q.iter_mut() {
+        if upright.is_front {
+            transform.rotation = Quat::from_rotation_y(-angle.to_radians());
+        }
     }
 }
 
-pub fn system_update_upright(config: Res<Configuration>, mut q: Query<(&mut Transform, &Upright)>) {
+pub fn system_update_upright_config(config: Res<Configuration>, mut q: Query<(&mut Transform, &Upright)>) {
     if config.enable_physics {
         for (mut transform, upright) in q.iter_mut() {
             if upright.is_front {
@@ -105,6 +97,8 @@ pub fn system_update_upright_joint(
             //     0.,
             //     0.,
             // );
+            // Another old try:
+            //     joint.data.set_motor_position(JointAxis::Y, angle, 1e9, 1e3);
             joint.data.set_local_anchor2(Vec3::new(
                 if upright_joint.is_left {
                     config.upright_offset

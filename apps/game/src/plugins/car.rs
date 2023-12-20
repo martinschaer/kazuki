@@ -4,15 +4,16 @@ use bevy::{
 };
 use bevy_rapier3d::prelude::*;
 
-// dynamics::suspension::system_steering
-use crate::car::{objects::wheels::spawn_wheel, CarSpecs};
+use crate::car::{
+    dynamics::suspension::system_update_upright_steering, objects::wheels::spawn_wheel, CarSpecs,
+};
 use crate::plugins::{CarPlugin, GROUP_BODY, GROUP_SURFACE};
 
 impl Plugin for CarPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CarSpecs>().add_systems(Startup, setup);
-        // TODO: re-introduce steering
-        // .add_systems(Update, system_steering);
+        app.init_resource::<CarSpecs>()
+            .add_systems(Startup, setup)
+            .add_systems(Update, system_update_upright_steering);
     }
 }
 
@@ -22,7 +23,7 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut car_specs: ResMut<CarSpecs>,
 ) {
-    let car_transform = Transform::from_xyz(0., 2., 0.);
+    let car_transform = Transform::from_xyz(-1., 2., -3.);
     let body_mat = materials.add(Color::hsla(60.0, 0.0, 0.5, 0.5).into());
     let body_mesh = meshes.add(Mesh::from(shape::Box {
         min_x: car_specs.width / -2.,

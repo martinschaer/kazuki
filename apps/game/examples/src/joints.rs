@@ -11,8 +11,8 @@ use super::JointsPlugin;
 use crate::car::{
     dynamics::{
         suspension::{
-            make_front_upright_chasis_joint, make_front_upright_wheel_joint, system_update_upright,
-            system_update_upright_joint, system_update_wheel,
+            make_front_upright_chasis_joint, make_front_upright_wheel_joint,
+            system_update_upright_config, system_update_upright_joint, system_update_wheel,
         },
         UprightJoint, WheelJoint,
     },
@@ -27,7 +27,7 @@ impl Plugin for JointsPlugin {
             Update,
             (
                 system_update_wheel,
-                system_update_upright,
+                system_update_upright_config,
                 system_update_upright_joint,
                 update_physics_active,
             ),
@@ -117,6 +117,7 @@ fn spawn_wheel(
         params.body_w * 0.5
     };
     let body_pos_y = 1.6;
+    let body_pos = Vec3::new(body_pos_x, body_pos_y, 0.);
     let mut anchor = params.body_w * 0.5 + params.upright_w * 0.5;
     if params.is_left {
         anchor *= -1.;
@@ -132,8 +133,7 @@ fn spawn_wheel(
             params.is_left,
             upright_offset_relative,
             config.wheel_offset,
-            body_pos_x,
-            body_pos_y,
+            body_pos,
             params.body_w,
             anchor,
         );
@@ -142,7 +142,7 @@ fn spawn_wheel(
         .spawn(PbrBundle {
             mesh: mesh.clone(),
             material: material.clone(),
-            transform: Transform::from_xyz(body_pos_x, body_pos_y, 0.),
+            transform: Transform::from_translation(body_pos),
             ..default()
         })
         .insert(Name::new("Body"))

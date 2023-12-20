@@ -13,14 +13,15 @@ pub fn get_suspension_geometry(
     is_left: bool,
     upright_offset_relative: f32,
     wheel_offset_abs: f32,
-    body_pos_x: f32,
-    body_pos_y: f32,
+    body_pos: Vec3,
     body_w: f32,
     anchor: f32,
 ) -> ((Vec3, Quat), (Vec3, Quat)) {
-    let upright_pos_x = upright_offset_relative + anchor;
-    let upright_pos_y = body_pos_y - body_w * 0.5;
-    let upright_translation = Vec3::new(upright_pos_x + body_pos_x, upright_pos_y, 0.);
+    let upright_translation = Vec3::new(
+        upright_offset_relative + anchor + body_pos.x,
+        body_pos.y - body_w * 0.5,
+        body_pos.z,
+    );
     let upright_rotation = Quat::IDENTITY;
 
     let (wheel_pos_x, wheel_rot_z) = if is_left {
@@ -28,7 +29,7 @@ pub fn get_suspension_geometry(
     } else {
         (upright_translation.x + wheel_offset_abs, PI * -0.5)
     };
-    let wheel_translation = Vec3::new(wheel_pos_x, upright_translation.y, 0.);
+    let wheel_translation = Vec3::new(wheel_pos_x, upright_translation.y, upright_translation.z);
     let wheel_rotation = Quat::from_euler(EulerRot::XYZ, 0., 0., wheel_rot_z);
 
     (
@@ -71,7 +72,7 @@ pub fn spawn_wheel(
 
     // Geometry
     let ((upright_translation, upright_rotation), (wheel_translation, wheel_rotation)) =
-        get_suspension_geometry(is_left, 0., 0., 0., 0., car_specs.width, anchor.x);
+        get_suspension_geometry(is_left, 0., 0., Vec3::ZERO, car_specs.width, anchor.x);
 
     // upright
     let upright_entity = commands
