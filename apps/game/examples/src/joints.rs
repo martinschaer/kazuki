@@ -2,18 +2,12 @@ use bevy::{
     app::{App, Plugin},
     prelude::*,
 };
-use bevy_rapier3d::{
-    geometry::ColliderMassProperties,
-    prelude::{Collider, ImpulseJoint, MultibodyJoint, RapierConfiguration, RigidBody},
-};
+use bevy_rapier3d::{geometry::ColliderMassProperties, prelude::*};
 
 use super::JointsPlugin;
 use crate::car::{
     dynamics::{
-        suspension::{
-            make_front_upright_chasis_joint, make_front_upright_wheel_joint,
-            system_update_upright_config, system_update_upright_joint, system_update_wheel,
-        },
+        suspension::{make_front_upright_chasis_joint, make_upright_wheel_joint},
         UprightJoint, WheelJoint,
     },
     objects::wheels::get_suspension_geometry,
@@ -26,20 +20,84 @@ impl Plugin for JointsPlugin {
         app.add_systems(Startup, setup).add_systems(
             Update,
             (
-                system_update_wheel,
-                system_update_upright_config,
-                system_update_upright_joint,
-                update_physics_active,
+                system_wheel_offset_and_motor,
+                system_upright_offset,
+                system_steering,
+                system_update_physics_active,
             ),
         );
     }
 }
 
-fn update_physics_active(
+fn system_update_physics_active(
     config: Res<Configuration>,
     mut rapier_config: ResMut<RapierConfiguration>,
 ) {
     rapier_config.physics_pipeline_active = config.enable_physics;
+}
+
+fn system_steering(config: Res<Configuration>, mut q: Query<(&mut ImpulseJoint, &UprightJoint)>) {
+    if config.enable_physics {
+        for (mut joint, upright) in q.iter_mut() {
+            if upright.is_front {
+                joint.data.set_motor_position(
+                    JointAxis::AngX,
+                    config.steering_angle.to_radians(),
+                    1e6,
+                    1e5,
+                );
+            }
+        }
+    }
+}
+
+fn system_upright_offset(
+    config: Res<Configuration>,
+    mut q: Query<(&mut ImpulseJoint, &UprightJoint)>,
+) {
+    if config.enable_physics {
+        for (mut joint, upright_joint) in q.iter_mut() {
+            joint.data.set_local_anchor2(Vec3::new(
+                if upright_joint.is_left {
+                    config.upright_offset
+                } else {
+                    -config.upright_offset
+                },
+                0.,
+                0.,
+            ));
+        }
+    }
+}
+
+fn system_wheel_offset_and_motor(
+    config: Res<Configuration>,
+    mut q: Query<(&mut ImpulseJoint, &WheelJoint)>,
+) {
+    if config.enable_physics {
+        for (mut joint, wheel_joint) in q.iter_mut() {
+            // motor
+            let vel = if wheel_joint.is_left {
+                -config.wheel_vel
+            } else {
+                config.wheel_vel
+            };
+            joint.data.set_motor_velocity(JointAxis::AngX, vel, 1.);
+
+            // offset
+            let offset = if wheel_joint.is_left {
+                -config.wheel_offset
+            } else {
+                config.wheel_offset
+            };
+            joint
+                .data
+                .set_local_anchor1(Vec3::new(offset * 0.5, 0., 0.));
+            joint
+                .data
+                .set_local_anchor2(Vec3::new(0., config.wheel_offset * -0.5, 0.));
+        }
+    }
 }
 
 struct SuspensionParams {
@@ -118,9 +176,9 @@ fn spawn_wheel(
     };
     let body_pos_y = 1.6;
     let body_pos = Vec3::new(body_pos_x, body_pos_y, 0.);
-    let mut anchor = params.body_w * 0.5 + params.upright_w * 0.5;
+    let mut anchor = Vec3::new(params.body_w * 0.5 + params.upright_w * 0.5, 0., 0.);
     if params.is_left {
-        anchor *= -1.;
+        anchor.x = -anchor.x;
     }
 
     let upright_offset_relative = if params.is_left {
@@ -134,7 +192,6 @@ fn spawn_wheel(
             upright_offset_relative,
             config.wheel_offset,
             body_pos,
-            params.body_w,
             anchor,
         );
 
@@ -186,10 +243,10 @@ fn spawn_wheel(
         .id();
 
     // Wheel - Upright Joint
-    let wheel_joint = make_front_upright_wheel_joint(config.wheel_offset, params.is_left);
+    let wheel_joint = make_upright_wheel_joint(config.wheel_offset, params.is_left);
 
     commands.entity(wheel).insert((
-        MultibodyJoint::new(upright, wheel_joint),
+        ImpulseJoint::new(upright, wheel_joint),
         WheelJoint {
             is_front: true,
             is_left: params.is_left,
@@ -197,12 +254,8 @@ fn spawn_wheel(
     ));
 
     // Upright - Body Joint
-    let upright_joint = make_front_upright_chasis_joint(
-        Vec3::new(anchor, 0., 0.),
-        upright_offset_relative,
-        [-1., 0.],
-        false,
-    );
+    let upright_joint =
+        make_front_upright_chasis_joint(anchor, upright_offset_relative, [-1., 0.], false);
 
     commands.entity(upright).insert((
         ImpulseJoint::new(body, upright_joint),

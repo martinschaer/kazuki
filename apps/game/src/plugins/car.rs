@@ -7,7 +7,7 @@ use bevy_rapier3d::prelude::*;
 use crate::car::{
     dynamics::suspension::{system_rear_axle_motor, system_update_upright_steering},
     objects::wheels::spawn_wheel,
-    CarSpecs,
+    Body, CarSpecs,
 };
 use crate::plugins::{CarPlugin, GROUP_BODY, GROUP_SURFACE};
 
@@ -64,6 +64,7 @@ fn setup(
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY | GROUP_SURFACE),
         ))
         .insert(Name::new("car_body"))
+        .insert(Body)
         .id();
 
     // wheels
@@ -90,9 +91,9 @@ fn setup(
         ),
     ];
     for (i, anchor) in wheels_anchors.iter().enumerate() {
-        // TODO: give wheel material a name and don't pass it to spawn_wheel
         let material = materials.add(Color::hsl(90. * i as f32, 1.0, 0.5).into());
         spawn_wheel(
+            &car_transform,
             material,
             &mut commands,
             &mut meshes,

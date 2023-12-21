@@ -28,7 +28,7 @@ pub fn run() {
         )
         .add_plugins(FrameTimeDiagnosticsPlugin)
         .add_plugins(MainScenePlugin {
-            camera_type: CameraType::Orthographic,
+            camera_type: CameraType::Follow,
         })
         .add_plugins(CarPlugin)
         .add_plugins(ControlsPlugin)

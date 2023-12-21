@@ -4,7 +4,7 @@ mod cubes;
 mod main_scene;
 
 pub enum CameraType {
-    Orthographic,
+    Follow,
     Fly,
 }
 

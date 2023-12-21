@@ -18,6 +18,9 @@ pub struct FrontWheel;
 #[derive(Component)]
 pub struct RearWheel;
 
+#[derive(Component)]
+pub struct Body;
+
 #[derive(Reflect, Resource, Default, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]
 pub struct Configuration {

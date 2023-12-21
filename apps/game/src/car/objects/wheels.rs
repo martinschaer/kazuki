@@ -2,9 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use std::f32::consts::PI;
 
-use crate::car::dynamics::suspension::{
-    make_front_upright_chasis_joint, make_front_upright_wheel_joint,
-};
+use crate::car::dynamics::suspension::{make_front_upright_chasis_joint, make_upright_wheel_joint};
 use crate::car::dynamics::{UprightJoint, WheelJoint};
 use crate::car::{CarSpecs, FrontWheel, RearWheel, Upright};
 use crate::plugins::{GROUP_SURFACE, GROUP_WHEEL};
@@ -14,13 +12,12 @@ pub fn get_suspension_geometry(
     upright_offset_relative: f32,
     wheel_offset_abs: f32,
     body_pos: Vec3,
-    body_w: f32,
-    anchor: f32,
+    anchor: Vec3,
 ) -> ((Vec3, Quat), (Vec3, Quat)) {
     let upright_translation = Vec3::new(
-        upright_offset_relative + anchor + body_pos.x,
-        body_pos.y - body_w * 0.5,
-        body_pos.z,
+        upright_offset_relative + body_pos.x + anchor.x,
+        body_pos.y + anchor.y,
+        body_pos.z + anchor.z,
     );
     let upright_rotation = Quat::IDENTITY;
 
@@ -39,6 +36,7 @@ pub fn get_suspension_geometry(
 }
 
 pub fn spawn_wheel(
+    car_transform: &Transform,
     material: Handle<StandardMaterial>,
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
@@ -69,16 +67,18 @@ pub fn spawn_wheel(
         min_z: -0.1,
         max_z: 0.1,
     }));
+    let upright_collider = Collider::cuboid(0.1, car_specs.wheel_half_height * 0.5, 0.1);
 
     // Geometry
     let ((upright_translation, upright_rotation), (wheel_translation, wheel_rotation)) =
-        get_suspension_geometry(is_left, 0., 0., Vec3::ZERO, car_specs.width, anchor.x);
+        get_suspension_geometry(is_left, 0., 0., car_transform.translation, anchor);
 
     // upright
     let upright_entity = commands
         .spawn(PbrBundle {
             mesh: upright_mesh,
             // material: suspension_mat_handle.clone(),
+            material: material.clone(),
             transform: Transform {
                 translation: upright_translation,
                 rotation: upright_rotation,
@@ -88,6 +88,8 @@ pub fn spawn_wheel(
         })
         .insert(RigidBody::Dynamic)
         .insert(Name::new(format!("upright_{}", wheel_num)))
+        .insert(upright_collider)
+        .insert(ColliderMassProperties::Mass(car_specs.upright_mass))
         // .insert(AdditionalMassProperties::Mass(car_specs.upright_mass))
         .insert(Upright { is_left, is_front })
         .id();
@@ -97,24 +99,23 @@ pub fn spawn_wheel(
         .spawn(PbrBundle {
             mesh: wheel_mesh,
             material,
-            ..default()
-        })
-        .insert(Transform {
-            translation: wheel_translation,
-            rotation: wheel_rotation,
+            transform: Transform {
+                translation: wheel_translation,
+                rotation: wheel_rotation,
+                ..default()
+            },
             ..default()
         })
         .insert(Name::new(format!("wheel_{}", wheel_num)))
         .insert(RigidBody::Dynamic)
         .insert(wheel_collider)
-        .insert(Ccd::enabled())
-        // .insert(ColliderMassProperties::Mass(car_specs.wheel_mass))
+        // .insert(Ccd::enabled())
+        .insert(ColliderMassProperties::Mass(car_specs.wheel_mass))
         .insert(CollisionGroups::new(
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL),
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
         ))
         // .insert(Restitution::coefficient(0.5))
-        // .insert(ImpulseJoint::new(upright_entity, axel_joint))
         .id();
 
     if is_front {
@@ -124,10 +125,10 @@ pub fn spawn_wheel(
     }
 
     // Wheel - Upright Joint
-    let wheel_joint = make_front_upright_wheel_joint(car_specs.wheel_offset, is_left);
+    let wheel_joint = make_upright_wheel_joint(car_specs.wheel_offset, is_left);
 
     commands.entity(wheel_entity).insert((
-        MultibodyJoint::new(upright_entity, wheel_joint),
+        ImpulseJoint::new(upright_entity, wheel_joint),
         WheelJoint { is_left, is_front },
     ));
 

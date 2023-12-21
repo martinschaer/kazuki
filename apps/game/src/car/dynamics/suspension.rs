@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::{
-    GenericJoint, GenericJointBuilder, ImpulseJoint, JointAxesMask, JointAxis, MultibodyJoint,
+    GenericJoint, GenericJointBuilder, ImpulseJoint, JointAxesMask, JointAxis,
 };
 use std::f32::consts::PI;
 
 use crate::car::{
     dynamics::{UprightJoint, WheelJoint},
-    Configuration, RearWheel, Upright,
+    RearWheel,
 };
 use crate::plugins::controls::ControlsState;
 
@@ -17,127 +17,42 @@ fn steering_to_angle(steering_wheel_degrees: f32) -> f32 {
         / steering_wheel_degrees_range
         - turning_degrees * 0.5
 }
-pub fn system_update_wheel(
-    config: Res<Configuration>,
-    mut q: Query<(&mut MultibodyJoint, &WheelJoint)>,
-) {
-    if config.enable_physics {
-        for (mut joint, wheel_joint) in q.iter_mut() {
-            // motor
-            let vel = if wheel_joint.is_left {
-                -config.wheel_vel
-            } else {
-                config.wheel_vel
-            };
-            joint.data.set_motor_velocity(JointAxis::AngX, vel, 1.);
-
-            // offset
-            let offset = if wheel_joint.is_left {
-                -config.wheel_offset
-            } else {
-                config.wheel_offset
-            };
-            joint
-                .data
-                .set_local_anchor1(Vec3::new(offset * 0.5, 0., 0.));
-            joint
-                .data
-                .set_local_anchor2(Vec3::new(0., config.wheel_offset * -0.5, 0.));
-        }
-    }
-}
-
-pub fn make_front_upright_wheel_joint(abs_offset: f32, is_left: bool) -> GenericJoint {
-    let offset = is_left.then(|| -abs_offset).unwrap_or(abs_offset);
-    let builder = GenericJointBuilder::new(
-        JointAxesMask::X
-            | JointAxesMask::Y
-            | JointAxesMask::Z
-            | JointAxesMask::ANG_Y
-            | JointAxesMask::ANG_Z,
-    )
-    .local_axis1(if is_left { -Vec3::X } else { Vec3::X })
-    .local_axis2(-Vec3::Y)
-    .local_basis1(Quat::from_axis_angle(
-        Vec3::Y,
-        if is_left { 0. } else { PI },
-    )) // hackfix
-    .local_anchor1(Vec3::new(offset * 0.5, 0., 0.))
-    .local_anchor2(Vec3::new(0., abs_offset * -0.5, 0.))
-    .set_motor(JointAxis::AngX, 0., 0., 1000., 1.);
-    let mut joint = builder.build();
-    joint.set_contacts_enabled(false);
-    joint
-}
 
 pub fn system_rear_axle_motor(
     controls: Res<ControlsState>,
-    mut q: Query<(&mut MultibodyJoint, &WheelJoint), With<RearWheel>>,
+    mut q: Query<(&mut ImpulseJoint, &WheelJoint), With<RearWheel>>,
 ) {
     for (mut joint, wheel_joint) in q.iter_mut() {
         let vel = if wheel_joint.is_left {
-            controls.accelerator * -100.
+            controls.accelerator * -1000.
         } else {
-            controls.accelerator * 100.
+            controls.accelerator * 1000.
         };
         joint.data.set_motor_velocity(JointAxis::AngX, vel, 1.);
     }
 }
 
-pub fn system_update_upright_steering(
-    controls: Res<ControlsState>,
-    mut q: Query<(&mut Transform, &Upright)>,
-) {
-    let angle = steering_to_angle(controls.steering_wheel_degrees);
-    for (mut transform, upright) in q.iter_mut() {
-        if upright.is_front {
-            transform.rotation = Quat::from_rotation_y(-angle.to_radians());
-        }
-    }
-}
 // pub fn system_update_upright_steering(
 //     controls: Res<ControlsState>,
-//     mut q: Query<(&mut ImpulseJoint, &UprightJoint)>,
+//     mut q: Query<(&mut Transform, &Upright)>,
 // ) {
 //     let angle = steering_to_angle(controls.steering_wheel_degrees);
-//     println!("angle: {}", angle);
-//     for (mut joint, upright_joint) in q.iter_mut() {
-//         if upright_joint.is_front {
-//             joint
-//                 .data
-//                 .set_motor_position(JointAxis::AngX, angle.to_radians(), 1000., 1.);
+//     for (mut transform, upright) in q.iter_mut() {
+//         if upright.is_front {
+//             transform.rotation = Quat::from_rotation_y(-angle.to_radians());
 //         }
 //     }
 // }
-
-pub fn system_update_upright_config(
-    config: Res<Configuration>,
-    mut q: Query<(&mut Transform, &Upright)>,
-) {
-    if config.enable_physics {
-        for (mut transform, upright) in q.iter_mut() {
-            if upright.is_front {
-                transform.rotation = Quat::from_rotation_y(config.steering_angle.to_radians());
-            }
-        }
-    }
-}
-
-pub fn system_update_upright_joint(
-    config: Res<Configuration>,
+pub fn system_update_upright_steering(
+    controls: Res<ControlsState>,
     mut q: Query<(&mut ImpulseJoint, &UprightJoint)>,
 ) {
-    if config.enable_physics {
-        for (mut joint, upright_joint) in q.iter_mut() {
-            joint.data.set_local_anchor2(Vec3::new(
-                if upright_joint.is_left {
-                    config.upright_offset
-                } else {
-                    -config.upright_offset
-                },
-                0.,
-                0.,
-            ));
+    let angle = steering_to_angle(controls.steering_wheel_degrees);
+    for (mut joint, upright_joint) in q.iter_mut() {
+        if upright_joint.is_front {
+            joint
+                .data
+                .set_motor_position(JointAxis::AngX, angle.to_radians(), 1e6, 1e5);
         }
     }
 }
@@ -168,10 +83,31 @@ pub fn make_front_upright_chasis_joint(
     if lock_direction {
     } else {
         // builder = builder.limits(JointAxis::X, suspension_limits);
-        // builder = builder.limits(JointAxis::AngX, [-90_f32.to_radians(), 90_f32.to_radians()]);
         builder = builder.limits(JointAxis::AngX, [-45_f32.to_radians(), 45_f32.to_radians()]);
-        // builder = builder.set_motor(JointAxis::AngX, 0.0, 0.0, 1000., 1.);
+        builder = builder.set_motor(JointAxis::AngX, 0., 0., 1e6, 1e5);
     }
+    let mut joint = builder.build();
+    joint.set_contacts_enabled(false);
+    joint
+}
+
+pub fn make_upright_wheel_joint(abs_offset: f32, is_left: bool) -> GenericJoint {
+    let offset = is_left.then(|| -abs_offset).unwrap_or(abs_offset);
+    let builder = GenericJointBuilder::new(
+        JointAxesMask::X
+            | JointAxesMask::Y
+            | JointAxesMask::Z
+            | JointAxesMask::ANG_Y
+            | JointAxesMask::ANG_Z,
+    )
+    .local_axis1(if is_left { -Vec3::X } else { Vec3::X })
+    .local_axis2(-Vec3::Y)
+    .local_basis1(Quat::from_axis_angle(
+        Vec3::Y,
+        if is_left { 0. } else { PI },
+    )) // hackfix
+    .local_anchor1(Vec3::new(offset * 0.5, 0., 0.))
+    .local_anchor2(Vec3::new(0., abs_offset * -0.5, 0.));
     let mut joint = builder.build();
     joint.set_contacts_enabled(false);
     joint

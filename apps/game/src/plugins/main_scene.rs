@@ -4,13 +4,13 @@ use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
-    render::camera::ScalingMode,
 };
 use bevy_flycam::prelude::*;
 use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
 use std::f32::consts::PI;
 
 use super::MainScenePlugin;
+use crate::car::Body;
 use crate::plugins::{CameraType, GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL};
 
 #[derive(Component)]
@@ -25,14 +25,30 @@ impl Plugin for MainScenePlugin {
             .add_systems(Update, text_update_system);
         // .add_systems(Update, material_animation_system)
         match self.camera_type {
-            CameraType::Orthographic => {
-                app.add_systems(Startup, setup_camera);
+            CameraType::Follow => {
+                app.add_systems(Startup, setup_camera)
+                    .add_systems(Update, system_cam_follow);
             }
             CameraType::Fly => {
                 app.add_plugins(NoCameraPlayerPlugin)
                     .add_systems(Startup, setup_fly_camera);
             }
         };
+    }
+}
+
+fn system_cam_follow(
+    mut q_c: Query<&mut Transform, (With<Camera3d>, Without<Body>)>,
+    q_b: Query<&Transform, With<Body>>,
+) {
+    if let Ok(mut cam_transform) = q_c.get_single_mut() {
+        if let Ok(body_transform) = q_b.get_single() {
+            // let mut pos = body_transform.translation;
+            // pos.y += 2.0;
+            // pos.z += 4.0;
+            // cam_transform.translation = pos;
+            cam_transform.look_at(body_transform.translation, Vec3::Y);
+        }
     }
 }
 
@@ -168,12 +184,12 @@ fn setup_camera(
     // Camera
     commands.spawn((
         Camera3dBundle {
-            projection: OrthographicProjection {
-                scale: 5.0,
-                scaling_mode: ScalingMode::FixedVertical(2.0),
-                ..default()
-            }
-            .into(),
+            // projection: OrthographicProjection {
+            //     scale: 5.0,
+            //     scaling_mode: ScalingMode::FixedVertical(2.0),
+            //     ..default()
+            // }
+            // .into(),
             transform: Transform::from_xyz(-8.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
