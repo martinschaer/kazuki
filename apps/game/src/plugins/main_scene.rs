@@ -90,7 +90,7 @@ fn setup_3d(
         .with_children(|children| {
             children
                 .spawn(RigidBody::Fixed)
-                .insert(Collider::cuboid(16., 0.1, 16.))
+                .insert(Collider::cuboid(32., 0.1, 32.))
                 .insert(CollisionGroups::new(
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL | GROUP_BODY),
@@ -174,7 +174,7 @@ fn setup_camera(
                 ..default()
             }
             .into(),
-            transform: Transform::from_xyz(0.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(-8.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
