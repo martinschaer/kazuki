@@ -6,15 +6,14 @@ use std::f32::consts::PI;
 
 use crate::car::{
     dynamics::{UprightJoint, WheelJoint},
-    Configuration, Upright,
+    Configuration, RearWheel, Upright,
 };
 use crate::plugins::controls::ControlsState;
 
 fn steering_to_angle(steering_wheel_degrees: f32) -> f32 {
     let turning_degrees = 90.;
     let steering_wheel_degrees_range = 900.;
-    turning_degrees
-        * (steering_wheel_degrees + steering_wheel_degrees_range * 0.5)
+    turning_degrees * (steering_wheel_degrees + steering_wheel_degrees_range * 0.5)
         / steering_wheel_degrees_range
         - turning_degrees * 0.5
 }
@@ -24,6 +23,7 @@ pub fn system_update_wheel(
 ) {
     if config.enable_physics {
         for (mut joint, wheel_joint) in q.iter_mut() {
+            // motor
             let vel = if wheel_joint.is_left {
                 -config.wheel_vel
             } else {
@@ -31,6 +31,7 @@ pub fn system_update_wheel(
             };
             joint.data.set_motor_velocity(JointAxis::AngX, vel, 1.);
 
+            // offset
             let offset = if wheel_joint.is_left {
                 -config.wheel_offset
             } else {
@@ -62,14 +63,31 @@ pub fn make_front_upright_wheel_joint(abs_offset: f32, is_left: bool) -> Generic
         if is_left { 0. } else { PI },
     )) // hackfix
     .local_anchor1(Vec3::new(offset * 0.5, 0., 0.))
-    .local_anchor2(Vec3::new(0., abs_offset * -0.5, 0.));
-    // builder = builder.set_motor(JointAxis::AngX, 0., 5., 0., 0.);
+    .local_anchor2(Vec3::new(0., abs_offset * -0.5, 0.))
+    .set_motor(JointAxis::AngX, 0., 0., 1000., 1.);
     let mut joint = builder.build();
     joint.set_contacts_enabled(false);
     joint
 }
 
-pub fn system_update_upright_steering(controls: Res<ControlsState>, mut q: Query<(&mut Transform, &Upright)>) {
+pub fn system_rear_axle_motor(
+    controls: Res<ControlsState>,
+    mut q: Query<(&mut MultibodyJoint, &WheelJoint), With<RearWheel>>,
+) {
+    for (mut joint, wheel_joint) in q.iter_mut() {
+        let vel = if wheel_joint.is_left {
+            controls.accelerator * -100.
+        } else {
+            controls.accelerator * 100.
+        };
+        joint.data.set_motor_velocity(JointAxis::AngX, vel, 1.);
+    }
+}
+
+pub fn system_update_upright_steering(
+    controls: Res<ControlsState>,
+    mut q: Query<(&mut Transform, &Upright)>,
+) {
     let angle = steering_to_angle(controls.steering_wheel_degrees);
     for (mut transform, upright) in q.iter_mut() {
         if upright.is_front {
@@ -154,5 +172,7 @@ pub fn make_front_upright_chasis_joint(
         builder = builder.limits(JointAxis::AngX, [-45_f32.to_radians(), 45_f32.to_radians()]);
         // builder = builder.set_motor(JointAxis::AngX, 0.0, 0.0, 1000., 1.);
     }
-    builder.build()
+    let mut joint = builder.build();
+    joint.set_contacts_enabled(false);
+    joint
 }

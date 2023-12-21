@@ -15,7 +15,7 @@ pub struct ControlsState {
     // Steering wheel is in the range [-450, 450]
     pub steering_wheel_degrees: f32,
     // Accelerator and brake are both in the range [0, 1]
-    // accelerator: f32,
+    pub accelerator: f32,
     // brake: f32,
 }
 
@@ -51,7 +51,7 @@ impl Plugin for ControlsPlugin {
 }
 
 fn setup(mut commands: Commands, window: Query<Entity, With<PrimaryWindow>>) {
-    commands.spawn(Camera2dBundle{
+    commands.spawn(Camera2dBundle {
         camera: Camera {
             order: 0,
             ..default()
@@ -101,10 +101,13 @@ fn turn_steering_wheel(
     mut query: Query<&ActionState<BoxMovement>>,
     mut controls: ResMut<ControlsState>,
 ) {
-    let win_w = window_query.single().width();
+    let win = window_query.single();
+    let win_w = win.width();
+    let win_h = win.height();
     let action_state = query.single_mut();
     if let Some(x) = action_state.axis_pair(BoxMovement::MousePosition) {
         // TODO: make magic numbers configurable
         controls.steering_wheel_degrees = (x.x() / win_w) * 900. - 450.;
+        controls.accelerator = 1. - x.y() / win_h;
     }
 }

@@ -5,7 +5,9 @@ use bevy::{
 use bevy_rapier3d::prelude::*;
 
 use crate::car::{
-    dynamics::suspension::system_update_upright_steering, objects::wheels::spawn_wheel, CarSpecs,
+    dynamics::suspension::{system_rear_axle_motor, system_update_upright_steering},
+    objects::wheels::spawn_wheel,
+    CarSpecs,
 };
 use crate::plugins::{CarPlugin, GROUP_BODY, GROUP_SURFACE};
 
@@ -13,7 +15,10 @@ impl Plugin for CarPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CarSpecs>()
             .add_systems(Startup, setup)
-            .add_systems(Update, system_update_upright_steering);
+            .add_systems(
+                Update,
+                (system_update_upright_steering, system_rear_axle_motor),
+            );
     }
 }
 
