@@ -10,6 +10,14 @@ use crate::car::{
 };
 use crate::plugins::controls::ControlsState;
 
+fn steering_to_angle(steering_wheel_degrees: f32) -> f32 {
+    let turning_degrees = 90.;
+    let steering_wheel_degrees_range = 900.;
+    turning_degrees
+        * (steering_wheel_degrees + steering_wheel_degrees_range * 0.5)
+        / steering_wheel_degrees_range
+        - turning_degrees * 0.5
+}
 pub fn system_update_wheel(
     config: Res<Configuration>,
     mut q: Query<(&mut MultibodyJoint, &WheelJoint)>,
@@ -62,18 +70,32 @@ pub fn make_front_upright_wheel_joint(abs_offset: f32, is_left: bool) -> Generic
 }
 
 pub fn system_update_upright_steering(controls: Res<ControlsState>, mut q: Query<(&mut Transform, &Upright)>) {
-    let turning_degrees = 90.;
-    let steering_wheel_degrees_range = 900.;
-    let angle = turning_degrees * controls.steering_wheel_degrees / steering_wheel_degrees_range
-        - turning_degrees * 0.5;
+    let angle = steering_to_angle(controls.steering_wheel_degrees);
     for (mut transform, upright) in q.iter_mut() {
         if upright.is_front {
             transform.rotation = Quat::from_rotation_y(-angle.to_radians());
         }
     }
 }
+// pub fn system_update_upright_steering(
+//     controls: Res<ControlsState>,
+//     mut q: Query<(&mut ImpulseJoint, &UprightJoint)>,
+// ) {
+//     let angle = steering_to_angle(controls.steering_wheel_degrees);
+//     println!("angle: {}", angle);
+//     for (mut joint, upright_joint) in q.iter_mut() {
+//         if upright_joint.is_front {
+//             joint
+//                 .data
+//                 .set_motor_position(JointAxis::AngX, angle.to_radians(), 1000., 1.);
+//         }
+//     }
+// }
 
-pub fn system_update_upright_config(config: Res<Configuration>, mut q: Query<(&mut Transform, &Upright)>) {
+pub fn system_update_upright_config(
+    config: Res<Configuration>,
+    mut q: Query<(&mut Transform, &Upright)>,
+) {
     if config.enable_physics {
         for (mut transform, upright) in q.iter_mut() {
             if upright.is_front {
@@ -89,16 +111,6 @@ pub fn system_update_upright_joint(
 ) {
     if config.enable_physics {
         for (mut joint, upright_joint) in q.iter_mut() {
-            // TODO: why doesn't this work? is there another way to apply a rotational force?
-            // joint.data.set_motor(
-            //     JointAxis::AngX,
-            //     config.steering_angle / 180. * PI,
-            //     5.,
-            //     0.,
-            //     0.,
-            // );
-            // Another old try:
-            //     joint.data.set_motor_position(JointAxis::Y, angle, 1e9, 1e3);
             joint.data.set_local_anchor2(Vec3::new(
                 if upright_joint.is_left {
                     config.upright_offset
@@ -140,6 +152,7 @@ pub fn make_front_upright_chasis_joint(
         // builder = builder.limits(JointAxis::X, suspension_limits);
         // builder = builder.limits(JointAxis::AngX, [-90_f32.to_radians(), 90_f32.to_radians()]);
         builder = builder.limits(JointAxis::AngX, [-45_f32.to_radians(), 45_f32.to_radians()]);
+        // builder = builder.set_motor(JointAxis::AngX, 0.0, 0.0, 1000., 1.);
     }
     builder.build()
 }

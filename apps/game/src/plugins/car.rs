@@ -93,7 +93,6 @@ fn setup(
             &mut meshes,
             &car_specs,
             body_entity,
-            // car_transform,
             *anchor,
             i,
         );
