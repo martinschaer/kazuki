@@ -89,7 +89,7 @@ fn setup_3d(
     // plane
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(shape::Plane::from_size(64.0).into()),
+            mesh: meshes.add(shape::Plane::from_size(128.0).into()),
             material: materials.add(Color::hsla(180.0, 0.5, 0.95, 0.1).into()),
             ..default()
         })
@@ -97,7 +97,7 @@ fn setup_3d(
         .with_children(|children| {
             children
                 .spawn(RigidBody::Fixed)
-                .insert(Collider::cuboid(32., 0.1, 32.))
+                .insert(Collider::cuboid(64., 0.1, 64.))
                 .insert(CollisionGroups::new(
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL | GROUP_BODY),
@@ -182,7 +182,7 @@ fn setup_camera(
             //     ..default()
             // }
             // .into(),
-            transform: Transform::from_xyz(-32.0, 32.0, 32.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(-16.0, 16.0, 16.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
