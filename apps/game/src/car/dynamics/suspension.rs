@@ -52,7 +52,7 @@ pub fn system_update_upright_steering(
         if upright_joint.is_front {
             joint
                 .data
-                .set_motor_position(JointAxis::AngX, angle.to_radians(), 1e6, 1e5);
+                .set_motor_position(JointAxis::AngX, -angle.to_radians(), 1e6, 1e5);
         }
     }
 }
