@@ -55,7 +55,6 @@ pub fn spawn_wheel(
     let upright_entity = commands
         .spawn(PbrBundle {
             mesh: car_handles.upright.clone(),
-            // material: suspension_mat_handle.clone(),
             material: car_handles.material.clone(),
             transform: Transform {
                 translation: upright_translation,
@@ -68,7 +67,6 @@ pub fn spawn_wheel(
         .insert(Name::new(format!("upright_{}", wheel_num)))
         .insert(car_handles.upright_collider.clone())
         .insert(ColliderMassProperties::Mass(car_specs.upright_mass))
-        // .insert(AdditionalMassProperties::Mass(car_specs.upright_mass))
         .insert(Upright { is_left, is_front })
         .id();
 
@@ -94,6 +92,7 @@ pub fn spawn_wheel(
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
         ))
         // .insert(Restitution::coefficient(0.5))
+        .insert(Friction::new(1.))
         .id();
 
     if is_front {

@@ -1,13 +1,11 @@
-use bevy::app::{App, Plugin};
 use bevy::{
+    app::{App, Plugin},
     core_pipeline::clear_color::ClearColorConfig,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
-    pbr::CascadeShadowConfigBuilder,
     prelude::*,
 };
 use bevy_flycam::prelude::*;
-use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
-use std::f32::consts::PI;
+use bevy_rapier3d::prelude::*;
 
 use super::MainScenePlugin;
 use crate::car::Body;
@@ -18,12 +16,9 @@ struct DebugText;
 
 impl Plugin for MainScenePlugin {
     fn build(&self, app: &mut App) {
-        app
-            // .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
-            .add_systems(Startup, setup)
+        app.add_systems(Startup, setup)
             .add_systems(Startup, setup_3d)
             .add_systems(Update, text_update_system);
-        // .add_systems(Update, material_animation_system)
         match self.camera_type {
             CameraType::Follow => {
                 app.add_systems(Startup, setup_camera)
@@ -43,10 +38,6 @@ fn system_cam_follow(
 ) {
     if let Ok(mut cam_transform) = q_c.get_single_mut() {
         if let Ok(body_transform) = q_b.get_single() {
-            // let mut pos = body_transform.translation;
-            // pos.y += 2.0;
-            // pos.z += 4.0;
-            // cam_transform.translation = pos;
             cam_transform.look_at(body_transform.translation, Vec3::Y);
         }
     }
@@ -111,6 +102,7 @@ fn setup_3d(
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL | GROUP_BODY),
                 ))
+                .insert(Friction::new(1.))
                 .insert(TransformBundle::from(Transform::from_xyz(0., -0.05, 0.)));
         });
 
@@ -121,28 +113,28 @@ fn setup_3d(
     });
 
     // directional light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            shadows_enabled: true,
-            illuminance: 100000.,
-            ..default()
-        },
-        transform: Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_xyzw(-PI / 8., 0., -PI / 8., 1.),
-            ..default()
-        },
-        // The default cascade config is designed to handle large scenes.
-        // As this example has a much smaller world, we can tighten the shadow
-        // bounds for better visual quality.
-        cascade_shadow_config: CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 4.0,
-            maximum_distance: 10.0,
-            ..default()
-        }
-        .into(),
-        ..default()
-    });
+    // commands.spawn(DirectionalLightBundle {
+    //     directional_light: DirectionalLight {
+    //         // shadows_enabled: true,
+    //         illuminance: 100000.,
+    //         ..default()
+    //     },
+    //     transform: Transform {
+    //         translation: Vec3::new(0.0, 2.0, 0.0),
+    //         rotation: Quat::from_xyzw(-PI / 8., 0., -PI / 8., 1.),
+    //         ..default()
+    //     },
+    //     // The default cascade config is designed to handle large scenes.
+    //     // As this example has a much smaller world, we can tighten the shadow
+    //     // bounds for better visual quality.
+    //     cascade_shadow_config: CascadeShadowConfigBuilder {
+    //         first_cascade_far_bound: 4.0,
+    //         maximum_distance: 10.0,
+    //         ..default()
+    //     }
+    //     .into(),
+    //     ..default()
+    // });
 }
 
 fn setup_camera(
@@ -190,7 +182,7 @@ fn setup_camera(
             //     ..default()
             // }
             // .into(),
-            transform: Transform::from_xyz(-8.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(-32.0, 32.0, 32.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
@@ -264,7 +256,7 @@ fn setup_camera(
 fn setup_fly_camera(mut commands: Commands) {
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(0.0, 4.0, 8.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(0.0, 4.0, 16.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
