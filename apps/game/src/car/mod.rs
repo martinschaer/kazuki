@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
+use bevy_rapier3d::prelude::Collider;
 
 pub mod dynamics;
 pub mod objects;
@@ -58,4 +59,13 @@ impl Default for CarSpecs {
             upright_mass: 2.5,
         }
     }
+}
+
+#[derive(Resource, Default)]
+pub struct CarMatMeshColliderHandles {
+    pub material: Handle<StandardMaterial>,
+    pub wheel: Handle<Mesh>,
+    pub upright: Handle<Mesh>,
+    pub wheel_collider: Collider,
+    pub upright_collider: Collider,
 }

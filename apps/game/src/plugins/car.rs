@@ -7,13 +7,14 @@ use bevy_rapier3d::prelude::*;
 use crate::car::{
     dynamics::suspension::{system_rear_axle_motor, system_update_upright_steering},
     objects::wheels::spawn_wheel,
-    Body, CarSpecs,
+    Body, CarMatMeshColliderHandles, CarSpecs,
 };
 use crate::plugins::{CarPlugin, GROUP_BODY, GROUP_SURFACE};
 
 impl Plugin for CarPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CarSpecs>()
+            .init_resource::<CarMatMeshColliderHandles>()
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
@@ -25,11 +26,11 @@ impl Plugin for CarPlugin {
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     mut car_specs: ResMut<CarSpecs>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut car_handles: ResMut<CarMatMeshColliderHandles>,
 ) {
     let car_transform = Transform::from_xyz(-1., 2., -3.);
-    let body_mat = materials.add(Color::hsla(60.0, 0.0, 0.5, 0.5).into());
     let body_mesh = meshes.add(Mesh::from(shape::Box {
         min_x: car_specs.width / -2.,
         max_x: car_specs.width / 2.,
@@ -44,6 +45,35 @@ fn setup(
         car_specs.length / 2.,
     );
 
+    let wheel_border_radius = 0.1;
+    let wheel_mesh = meshes.add(Mesh::from(shape::Cylinder {
+        radius: car_specs.wheel_diameter / 2.,
+        height: car_specs.wheel_half_height,
+        ..default()
+    }));
+    let wheel_collider = Collider::round_cylinder(
+        car_specs.wheel_half_height - (wheel_border_radius * 2.),
+        car_specs.wheel_diameter / 2. - wheel_border_radius,
+        wheel_border_radius,
+    );
+    car_handles.wheel = wheel_mesh;
+    car_handles.wheel_collider = wheel_collider;
+
+    let upright_mesh = meshes.add(Mesh::from(shape::Box {
+        min_x: -0.1,
+        max_x: 0.1,
+        min_y: car_specs.wheel_half_height * -0.5,
+        max_y: car_specs.wheel_half_height * 0.5,
+        min_z: -0.1,
+        max_z: 0.1,
+    }));
+    let upright_collider = Collider::cuboid(0.1, car_specs.wheel_half_height * 0.5, 0.1);
+    car_handles.upright = upright_mesh;
+    car_handles.upright_collider = upright_collider;
+
+    // material
+    car_handles.material = materials.add(Color::hsla(60.0, 0.0, 0.5, 0.5).into());
+
     // calculate car mass
     car_specs.mass -= 4. * (car_specs.wheel_mass + car_specs.upright_mass);
 
@@ -51,7 +81,7 @@ fn setup(
     let body_entity = commands
         .spawn(PbrBundle {
             mesh: body_mesh,
-            material: body_mat,
+            material: car_handles.material.clone(),
             transform: car_transform,
             ..default()
         })
@@ -63,7 +93,7 @@ fn setup(
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY),
             bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY | GROUP_SURFACE),
         ))
-        .insert(Name::new("car_body"))
+        .insert(Name::new("Body"))
         .insert(Body)
         .id();
 
@@ -91,12 +121,10 @@ fn setup(
         ),
     ];
     for (i, anchor) in wheels_anchors.iter().enumerate() {
-        let material = materials.add(Color::hsl(90. * i as f32, 1.0, 0.5).into());
         spawn_wheel(
             &car_transform,
-            material,
+            &car_handles,
             &mut commands,
-            &mut meshes,
             &car_specs,
             body_entity,
             *anchor,

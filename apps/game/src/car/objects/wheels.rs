@@ -4,7 +4,7 @@ use std::f32::consts::PI;
 
 use crate::car::dynamics::suspension::{make_front_upright_chasis_joint, make_upright_wheel_joint};
 use crate::car::dynamics::{UprightJoint, WheelJoint};
-use crate::car::{CarSpecs, FrontWheel, RearWheel, Upright};
+use crate::car::{CarMatMeshColliderHandles, CarSpecs, FrontWheel, RearWheel, Upright};
 use crate::plugins::{GROUP_SURFACE, GROUP_WHEEL};
 
 pub fn get_suspension_geometry(
@@ -37,9 +37,8 @@ pub fn get_suspension_geometry(
 
 pub fn spawn_wheel(
     car_transform: &Transform,
-    material: Handle<StandardMaterial>,
+    car_handles: &CarMatMeshColliderHandles,
     commands: &mut Commands,
-    meshes: &mut ResMut<Assets<Mesh>>,
     car_specs: &CarSpecs,
     body_entity: Entity,
     anchor: Vec3,
@@ -47,27 +46,6 @@ pub fn spawn_wheel(
 ) {
     let is_front = wheel_num / 2 == 0;
     let is_left = wheel_num % 2 == 0;
-    let wheel_border_radius = 0.1;
-    let wheel_mesh = meshes.add(Mesh::from(shape::Cylinder {
-        radius: car_specs.wheel_diameter / 2.,
-        height: car_specs.wheel_half_height,
-        ..default()
-    }));
-    let wheel_collider = Collider::round_cylinder(
-        car_specs.wheel_half_height - (wheel_border_radius * 2.),
-        car_specs.wheel_diameter / 2. - wheel_border_radius,
-        wheel_border_radius,
-    );
-
-    let upright_mesh = meshes.add(Mesh::from(shape::Box {
-        min_x: -0.1,
-        max_x: 0.1,
-        min_y: car_specs.wheel_half_height * -0.5,
-        max_y: car_specs.wheel_half_height * 0.5,
-        min_z: -0.1,
-        max_z: 0.1,
-    }));
-    let upright_collider = Collider::cuboid(0.1, car_specs.wheel_half_height * 0.5, 0.1);
 
     // Geometry
     let ((upright_translation, upright_rotation), (wheel_translation, wheel_rotation)) =
@@ -76,9 +54,9 @@ pub fn spawn_wheel(
     // upright
     let upright_entity = commands
         .spawn(PbrBundle {
-            mesh: upright_mesh,
+            mesh: car_handles.upright.clone(),
             // material: suspension_mat_handle.clone(),
-            material: material.clone(),
+            material: car_handles.material.clone(),
             transform: Transform {
                 translation: upright_translation,
                 rotation: upright_rotation,
@@ -88,7 +66,7 @@ pub fn spawn_wheel(
         })
         .insert(RigidBody::Dynamic)
         .insert(Name::new(format!("upright_{}", wheel_num)))
-        .insert(upright_collider)
+        .insert(car_handles.upright_collider.clone())
         .insert(ColliderMassProperties::Mass(car_specs.upright_mass))
         // .insert(AdditionalMassProperties::Mass(car_specs.upright_mass))
         .insert(Upright { is_left, is_front })
@@ -97,8 +75,8 @@ pub fn spawn_wheel(
     // wheel
     let wheel_entity = commands
         .spawn(PbrBundle {
-            mesh: wheel_mesh,
-            material,
+            mesh: car_handles.wheel.clone(),
+            material: car_handles.material.clone(),
             transform: Transform {
                 translation: wheel_translation,
                 rotation: wheel_rotation,
@@ -108,7 +86,7 @@ pub fn spawn_wheel(
         })
         .insert(Name::new(format!("wheel_{}", wheel_num)))
         .insert(RigidBody::Dynamic)
-        .insert(wheel_collider)
+        .insert(car_handles.wheel_collider.clone())
         // .insert(Ccd::enabled())
         .insert(ColliderMassProperties::Mass(car_specs.wheel_mass))
         .insert(CollisionGroups::new(
