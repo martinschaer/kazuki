@@ -1,48 +1,45 @@
-use bevy::app::{App, Plugin};
 use bevy::{
+    app::{App, Plugin},
     core_pipeline::clear_color::ClearColorConfig,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
-    pbr::CascadeShadowConfigBuilder,
     prelude::*,
-    render::camera::ScalingMode,
 };
-use bevy_rapier3d::prelude::{Collider, CollisionGroups, RigidBody};
-use std::f32::consts::PI;
+use bevy_flycam::prelude::*;
+use bevy_rapier3d::prelude::*;
 
 use super::MainScenePlugin;
-
-pub const GROUP_SURFACE: u32 = 0b01;
-pub const GROUP_BODY: u32 = 0b10;
-pub const GROUP_WHEEL: u32 = 0b100;
+use crate::car::Body;
+use crate::plugins::{CameraType, GROUP_BODY, GROUP_SURFACE, GROUP_WHEEL};
 
 #[derive(Component)]
 struct DebugText;
 
-#[derive(Component)]
-struct Player {
-    index: u8,
-}
-
 impl Plugin for MainScenePlugin {
     fn build(&self, app: &mut App) {
-        app
-            // .add_plugin(Material2dPlugin::<PostProcessingMaterial>::default())
-            .add_systems(Startup, setup)
+        app.add_systems(Startup, setup)
             .add_systems(Startup, setup_3d)
-            .add_systems(Startup, setup_camera)
-            .add_systems(Update, text_update_system)
-            // .add_systems(Update, material_animation_system)
-            .add_systems(Update, cube_animation_system);
+            .add_systems(Update, text_update_system);
+        match self.camera_type {
+            CameraType::Follow => {
+                app.add_systems(Startup, setup_camera)
+                    .add_systems(Update, system_cam_follow);
+            }
+            CameraType::Fly => {
+                app.add_plugins(NoCameraPlayerPlugin)
+                    .add_systems(Startup, setup_fly_camera);
+            }
+        };
     }
 }
 
-fn cube_animation_system(time: Res<Time>, mut players: Query<(&mut Transform, &Player)>) {
-    for (mut transform, player) in &mut players {
-        transform.translation = Vec3::new(
-            player.index as f32 - 2.5,
-            0.25,
-            (time.elapsed_seconds() + player.index as f32 * PI / 6.0).cos() + 1.25,
-        );
+fn system_cam_follow(
+    mut q_c: Query<&mut Transform, (With<Camera3d>, Without<Body>)>,
+    q_b: Query<&Transform, With<Body>>,
+) {
+    if let Ok(mut cam_transform) = q_c.get_single_mut() {
+        if let Ok(body_transform) = q_b.get_single() {
+            cam_transform.look_at(body_transform.translation, Vec3::Y);
+        }
     }
 }
 
@@ -55,10 +52,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     };
 
     // 2d text
-    commands.spawn(Text2dBundle {
-        text: Text::from_section("Kazuki", text_style.clone()).clone(),
-        ..default()
-    });
+    commands
+        .spawn(Text2dBundle {
+            text: Text::from_section("Kazuki", text_style.clone()).clone(),
+            ..default()
+        })
+        .insert(Name::new("Kazuki Title"));
 
     // UI text
     commands.spawn((
@@ -78,6 +77,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             }),
         ]),
         DebugText,
+        Name::new("DebugText"),
     ));
 }
 
@@ -89,38 +89,22 @@ fn setup_3d(
     // plane
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(shape::Plane::from_size(32.0).into()),
+            mesh: meshes.add(shape::Plane::from_size(128.0).into()),
             material: materials.add(Color::hsla(180.0, 0.5, 0.95, 0.1).into()),
             ..default()
         })
+        .insert(Name::new("Floor"))
         .with_children(|children| {
             children
                 .spawn(RigidBody::Fixed)
-                .insert(Collider::cuboid(16., 0.1, 16.))
+                .insert(Collider::cuboid(64., 0.1, 64.))
                 .insert(CollisionGroups::new(
                     bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
-                    bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL),
+                    bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_WHEEL | GROUP_BODY),
                 ))
+                .insert(Friction::new(1.))
                 .insert(TransformBundle::from(Transform::from_xyz(0., -0.05, 0.)));
         });
-
-    // cube
-    for x in 0..6 {
-        commands
-            .spawn((PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
-                material: materials.add(Color::hsl(60.0 * x as f32, 1.0, 0.5).into()),
-                transform: Transform::from_xyz(-2.5 + 1.0 * x as f32, 0.25, 0.0),
-                ..default()
-            },))
-            .insert(Player { index: x })
-            .insert(RigidBody::KinematicPositionBased)
-            .insert(Collider::cuboid(0.25, 0.25, 0.25))
-            .insert(CollisionGroups::new(
-                bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_SURFACE),
-                bevy_rapier3d::geometry::Group::from_bits_truncate(GROUP_BODY | GROUP_WHEEL),
-            ));
-    }
 
     // ambient light
     commands.insert_resource(AmbientLight {
@@ -129,28 +113,28 @@ fn setup_3d(
     });
 
     // directional light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            shadows_enabled: true,
-            illuminance: 100000.,
-            ..default()
-        },
-        transform: Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_xyzw(-PI / 8., 0., -PI / 8., 1.),
-            ..default()
-        },
-        // The default cascade config is designed to handle large scenes.
-        // As this example has a much smaller world, we can tighten the shadow
-        // bounds for better visual quality.
-        cascade_shadow_config: CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 4.0,
-            maximum_distance: 10.0,
-            ..default()
-        }
-        .into(),
-        ..default()
-    });
+    // commands.spawn(DirectionalLightBundle {
+    //     directional_light: DirectionalLight {
+    //         // shadows_enabled: true,
+    //         illuminance: 100000.,
+    //         ..default()
+    //     },
+    //     transform: Transform {
+    //         translation: Vec3::new(0.0, 2.0, 0.0),
+    //         rotation: Quat::from_xyzw(-PI / 8., 0., -PI / 8., 1.),
+    //         ..default()
+    //     },
+    //     // The default cascade config is designed to handle large scenes.
+    //     // As this example has a much smaller world, we can tighten the shadow
+    //     // bounds for better visual quality.
+    //     cascade_shadow_config: CascadeShadowConfigBuilder {
+    //         first_cascade_far_bound: 4.0,
+    //         maximum_distance: 10.0,
+    //         ..default()
+    //     }
+    //     .into(),
+    //     ..default()
+    // });
 }
 
 fn setup_camera(
@@ -192,13 +176,13 @@ fn setup_camera(
     // Camera
     commands.spawn((
         Camera3dBundle {
-            projection: OrthographicProjection {
-                scale: 5.0,
-                scaling_mode: ScalingMode::FixedVertical(2.0),
-                ..default()
-            }
-            .into(),
-            transform: Transform::from_xyz(-4.0, 4.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
+            // projection: OrthographicProjection {
+            //     scale: 5.0,
+            //     scaling_mode: ScalingMode::FixedVertical(2.0),
+            //     ..default()
+            // }
+            // .into(),
+            transform: Transform::from_xyz(-16.0, 16.0, 16.0).looking_at(Vec3::ZERO, Vec3::Y),
             camera_3d: Camera3d {
                 clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
                     Color::BLACK,
@@ -208,7 +192,7 @@ fn setup_camera(
             camera: Camera {
                 // Postprocessing
                 // target: RenderTarget::Image(image_handle.clone()),
-                order: 0,
+                order: 1,
                 ..default()
             },
             ..default()
@@ -224,7 +208,7 @@ fn setup_camera(
         camera: Camera {
             // Postprocessing
             // target: RenderTarget::Image(image_handle.clone()),
-            order: 1,
+            order: 2,
             ..default()
         },
         ..default()
@@ -267,6 +251,27 @@ fn setup_camera(
         post_processing_pass_layer,
     ));
     */
+}
+
+fn setup_fly_camera(mut commands: Commands) {
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(0.0, 4.0, 16.0).looking_at(Vec3::ZERO, Vec3::Y),
+            camera_3d: Camera3d {
+                clear_color: bevy::core_pipeline::clear_color::ClearColorConfig::Custom(
+                    Color::BLACK,
+                ),
+                ..default()
+            },
+            camera: Camera {
+                order: 1,
+                ..default()
+            },
+            ..default()
+        },
+        FlyCam,
+        // UiCameraConfig { show_ui: false },
+    ));
 }
 
 fn text_update_system(
