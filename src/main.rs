@@ -1,14 +1,22 @@
+use bevy::{
+    color::palettes::css::ORANGE_RED, input::common_conditions::input_toggle_active,
+    pbr::CascadeShadowConfigBuilder, prelude::*,
+};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use std::f32::consts::PI;
-
-use bevy::{color::palettes::css::ORANGE_RED, pbr::CascadeShadowConfigBuilder, prelude::*};
 
 use ground::build_ground;
 
 mod ground;
 
+#[bevy_main]
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(
+            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
+        )
+        // .add_plugins((DefaultPlugins, DevPlugins))
         .add_systems(Startup, setup)
         .run();
 }
@@ -45,7 +53,7 @@ fn setup(
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
-            shadows_enabled: true,
+            // shadows_enabled: true,
             ..default()
         },
         transform: Transform {
