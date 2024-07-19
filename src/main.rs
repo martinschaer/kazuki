@@ -56,10 +56,10 @@ fn setup(
     // ground
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(build_ground(10, 10, 10, 10)),
+            mesh: meshes.add(build_ground(10, 20, 80, 80)),
             // material: materials.add(Color::srgb_u8(0, 125, 125)),
             material: materials.add(StandardMaterial {
-                base_color: Color::srgb_u8(0, 125, 125),
+                base_color: Color::srgb_u8(168, 98, 35),
                 perceptual_roughness: 1.0,
                 ..default()
             }),

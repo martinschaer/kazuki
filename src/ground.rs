@@ -95,8 +95,8 @@ pub fn update_ground(mesh: &mut Mesh, t: f32, perm_table: &PermutationTable) {
             for vertex in v.iter_mut() {
                 let x = vertex[0];
                 let z = vertex[2];
-                let noise = perlin_2d(Vector2::new((x + t) as f64, z as f64), perm_table);
-                *vertex = [x, noise as f32 * 0.5, z];
+                let noise = perlin_2d(Vector2::new((x - t) as f64, z as f64), perm_table);
+                vertex[1] = noise as f32 * 0.5;
             }
             if let Indices::U32(indices) = indices {
                 normals = calculate_normals(v, &indices);
