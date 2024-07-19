@@ -1,5 +1,4 @@
 use bevy::{
-    color::palettes::css::ORANGE_RED,
     input::common_conditions::input_toggle_active,
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
@@ -71,16 +70,16 @@ fn setup(
     ));
 
     // ambient light
-    commands.insert_resource(AmbientLight {
-        color: ORANGE_RED.into(),
-        brightness: 0.02,
-    });
+    // commands.insert_resource(AmbientLight {
+    //     color: ORANGE_RED.into(),
+    //     brightness: 0.02,
+    // });
 
     // light
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             illuminance: light_consts::lux::OVERCAST_DAY,
-            shadows_enabled: true,
+            shadows_enabled: false,
             ..default()
         },
         transform: Transform {
@@ -99,6 +98,20 @@ fn setup(
         .into(),
         ..default()
     });
+
+    // spot light
+    // commands.spawn(SpotLightBundle {
+    //     transform: Transform::from_xyz(0.0, 2.0, 0.0).looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Z),
+    //     spot_light: SpotLight {
+    //         intensity: 100_000.0,
+    //         color: Color::srgb_u8(255, 255, 255),
+    //         shadows_enabled: false,
+    //         inner_angle: 0.6,
+    //         outer_angle: 0.8,
+    //         ..default()
+    //     },
+    //     ..default()
+    // });
 
     // camera
     commands.spawn(Camera3dBundle {
