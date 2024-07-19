@@ -1,6 +1,9 @@
 use bevy::{
     input::common_conditions::input_toggle_active,
-    pbr::CascadeShadowConfigBuilder,
+    pbr::{
+        wireframe::{Wireframe, WireframeConfig, WireframePlugin},
+        CascadeShadowConfigBuilder,
+    },
     prelude::*,
     render::camera::{Exposure, PhysicalCameraParameters},
 };
@@ -15,6 +18,9 @@ mod ground;
 #[derive(Component)]
 struct Ground;
 
+#[derive(Component)]
+struct Cursor;
+
 #[derive(Resource)]
 struct GroundParams {
     permutation_table: PermutationTable,
@@ -26,7 +32,7 @@ struct Parameters(PhysicalCameraParameters);
 #[bevy_main]
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, WireframePlugin))
         .add_plugins(
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
         )
@@ -37,8 +43,12 @@ fn main() {
             sensitivity_iso: 100.0,
             sensor_height: 0.01866,
         }))
+        .insert_resource(WireframeConfig {
+            global: false,
+            default_color: Color::WHITE.into(),
+        })
         .add_systems(Startup, setup)
-        .add_systems(Update, system_update_ground)
+        .add_systems(Update, (system_update_ground, system_update_cursor))
         .run();
 }
 
@@ -56,7 +66,7 @@ fn setup(
     // ground
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(build_ground(10, 20, 80, 80)),
+            mesh: meshes.add(build_ground(10, 10, 200, 200)),
             // material: materials.add(Color::srgb_u8(0, 125, 125)),
             material: materials.add(StandardMaterial {
                 base_color: Color::srgb_u8(168, 98, 35),
@@ -119,6 +129,18 @@ fn setup(
         exposure: Exposure::from_physical_camera(**parameters),
         ..default()
     });
+
+    // sphere
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(Sphere::default().mesh().ico(3).unwrap())),
+            material: materials.add(Color::srgba_u8(0, 0, 0, 65)),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..default()
+        },
+        Wireframe,
+        Cursor,
+    ));
 }
 
 fn system_update_ground(
@@ -134,4 +156,38 @@ fn system_update_ground(
         time.elapsed_seconds(),
         &res_ground_params.permutation_table,
     );
+}
+
+fn system_update_cursor(
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    ground_query: Query<&GlobalTransform, With<Ground>>,
+    mut cursor_query: Query<&mut Transform, With<Cursor>>,
+    windows: Query<&Window>,
+) {
+    let (camera, camera_transform) = camera_query.single();
+    let ground = ground_query.single();
+    let mut cursor = cursor_query.single_mut();
+
+    let Some(cursor_position) = windows.single().cursor_position() else {
+        return;
+    };
+
+    // Calculate a ray pointing from the camera into the world based on the cursor's position.
+    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+
+    // Calculate if and where the ray is hitting the ground plane.
+    let Some(distance) =
+        ray.intersect_plane(ground.translation(), InfinitePlane3d::new(ground.up()))
+    else {
+        return;
+    };
+    let point = ray.get_point(distance);
+
+    // Draw a circle just above the ground plane at that position.
+    // gizmos.circle(point + ground.up() * 0.01, ground.up(), 0.2, Color::WHITE);
+
+    // Update the cursor's position.
+    cursor.translation = point;
 }
