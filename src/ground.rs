@@ -8,46 +8,35 @@ use bevy::{
 use noise::{core::perlin::perlin_2d, permutationtable::PermutationTable, Vector2};
 
 pub fn build_ground(width: u32, height: u32, cols: u32, rows: u32) -> Mesh {
-    let middle_x = width as f32 / 2.0;
-    let middle_z = height as f32 / 2.0;
-    let tri_w = width as f32 / cols as f32;
-    let tri_h = height as f32 / rows as f32;
+    let half_w = width as f32 / 2.0;
+    let half_h = height as f32 / 2.0;
+    let w = width as f32 / cols as f32;
+    let h = height as f32 / rows as f32;
 
     // vertices
     let vertices = (0..rows)
         .flat_map(|row| {
             (0..cols)
                 .map(move |col| {
-                    let x = col as f32 * tri_w;
-                    let z = row as f32 * tri_h;
-                    [
-                        (x, z),
-                        (x + tri_w, z),
-                        (x, z + tri_h),
-                        (x + tri_w, z),
-                        (x + tri_w, z + tri_h),
-                        (x, z + tri_h),
-                    ]
+                    let x = col as f32 * w;
+                    let z = row as f32 * h;
+                    let quad = if row % 2 == col % 2 {
+                        [(0, 0), (1, 0), (1, 1), (0, 0), (1, 1), (0, 1)]
+                    } else {
+                        [(0, 0), (1, 0), (0, 1), (0, 1), (1, 0), (1, 1)]
+                    };
+                    quad.map(|(a, b)| (x + a as f32 * w, z + b as f32 * h))
                 })
                 .flatten()
         })
-        .map(|(x, z)| [x - middle_x, 0.0, z - middle_z])
+        .map(|(x, z)| [x - half_w, 0.0, z - half_h])
         .collect::<Vec<[f32; 3]>>();
     assert_eq!(vertices.len(), (cols * rows * 6) as usize, "vertices.len()");
 
     // indices
     let indices = (0..rows)
         .flat_map(|row| {
-            (0..cols).flat_map(move |col| {
-                vec![
-                    row * cols * 6 + col * 6 + 5,
-                    row * cols * 6 + col * 6 + 4,
-                    row * cols * 6 + col * 6 + 3,
-                    row * cols * 6 + col * 6 + 2,
-                    row * cols * 6 + col * 6 + 1,
-                    row * cols * 6 + col * 6,
-                ]
-            })
+            (0..cols).flat_map(move |col| [0, 2, 1, 3, 5, 4].map(|x| row * cols * 6 + col * 6 + x))
         })
         .collect::<Vec<u32>>();
     assert_eq!(indices.len(), (cols * rows * 6) as usize, "indices.len()");
@@ -60,14 +49,8 @@ pub fn build_ground(width: u32, height: u32, cols: u32, rows: u32) -> Mesh {
                 .map(move |col| {
                     let u = col as f32 / cols as f32;
                     let v = row as f32 / rows as f32;
-                    [
-                        (u, v),
-                        (u + 1., v),
-                        (u, v + 1.),
-                        (u + 1., v),
-                        (u + 1., v + 1.),
-                        (u, v + 1.),
-                    ]
+                    let coords = [(0, 0), (1, 0), (1, 1), (0, 0), (1, 1), (0, 1)];
+                    coords.map(|(x, y)| (u + x as f32, v + y as f32))
                 })
                 .flatten()
         })
@@ -96,7 +79,7 @@ pub fn update_ground(mesh: &mut Mesh, t: f32, perm_table: &PermutationTable) {
                 let x = vertex[0];
                 let z = vertex[2];
                 let noise = perlin_2d(Vector2::new((x - t) as f64, z as f64), perm_table);
-                vertex[1] = noise as f32 * 0.1;
+                vertex[1] = noise as f32 * 0.5;
             }
             if let Indices::U32(indices) = indices {
                 normals = calculate_normals(v, &indices);

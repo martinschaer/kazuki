@@ -66,16 +66,17 @@ fn setup(
     // ground
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(build_ground(10, 10, 200, 200)),
+            mesh: meshes.add(build_ground(15, 15, 200, 200)),
             // material: materials.add(Color::srgb_u8(0, 125, 125)),
             material: materials.add(StandardMaterial {
-                base_color: Color::srgb_u8(168, 98, 35),
+                base_color: Color::srgb_u8(20, 211, 88),
                 perceptual_roughness: 1.0,
                 ..default()
             }),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
+        // Wireframe,
         Ground,
     ));
 
