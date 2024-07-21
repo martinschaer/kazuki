@@ -80,7 +80,7 @@ pub fn system_update_cursor_collisions(
         }
     }
 
-    if mouse_button_input.just_pressed(MouseButton::Left) {
+    if mouse_button_input.pressed(MouseButton::Left) {
         move_selected_vertices(
             &mut ground_mesh,
             &vertices_intersected,

@@ -1,4 +1,8 @@
-use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::camera::Exposure};
+use bevy::{
+    pbr::{wireframe::Wireframe, CascadeShadowConfigBuilder},
+    prelude::*,
+    render::camera::Exposure,
+};
 use bevy_rapier3d::geometry::{Collider, Sensor};
 use kazuki::ground::build_ground;
 use noise::permutationtable::PermutationTable;
@@ -87,16 +91,16 @@ pub fn setup(
 
     // sphere
     commands.spawn((
-        // PbrBundle {
-        //     mesh: meshes.add(Mesh::from(Sphere::new(1.).mesh().ico(1).unwrap())),
-        //     material: materials.add(Color::srgba_u8(0, 0, 0, 0)),
-        //     transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        //     ..default()
-        // },
-        Transform::from_xyz(0.0, 0.5, 0.0),
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(Sphere::new(1.).mesh().ico(1).unwrap())),
+            material: materials.add(Color::srgba_u8(0, 0, 0, 0)),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..default()
+        },
+        // Transform::from_xyz(0.0, 0.5, 0.0),
         Collider::ball(1.),
         Sensor,
-        // Wireframe,
+        Wireframe,
         Cursor,
     ));
 }
