@@ -73,6 +73,36 @@ pub fn build_ground(width: u32, height: u32, cols: u32, rows: u32) -> Mesh {
     .with_inserted_indices(Indices::U32(indices))
 }
 
+pub fn move_selected_vertices(mesh: &mut Mesh, selected: &Vec<usize>, translation: Vec3) {
+    let indices = mesh.indices().unwrap().clone();
+    let mut normals = vec![];
+
+    let vertices = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION);
+    if let Some(vertices) = vertices {
+        if let VertexAttributeValues::Float32x3(v) = vertices {
+            for (i, vertex) in v.iter_mut().enumerate() {
+                if selected.contains(&i) {
+                    vertex[0] += translation.x;
+                    vertex[1] += translation.y;
+                    vertex[2] += translation.z;
+                }
+            }
+            if let Indices::U32(indices) = indices {
+                // TODO: calculate normals only for the selected vertices
+                normals = calculate_normals(v, &indices);
+            }
+        }
+    }
+
+    // update normals
+    if let Some(VertexAttributeValues::Float32x3(n)) = mesh.attribute_mut(Mesh::ATTRIBUTE_NORMAL) {
+        *n = normals
+            .iter()
+            .map(|n| [n[0] as f32, n[1] as f32, n[2] as f32])
+            .collect();
+    }
+}
+
 pub fn update_ground(mesh: &mut Mesh, t: f32, perm_table: &PermutationTable) {
     let indices = mesh.indices().unwrap().clone();
     let vertices = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION);

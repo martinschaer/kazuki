@@ -7,9 +7,7 @@ use bevy::{
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use data::Parameters;
-use scenes::terrain::{
-    system_update_cursor, system_update_cursor_collisions, system_update_ground,
-};
+use scenes::terrain::{system_update_cursor, system_update_cursor_collisions};
 use setup::setup;
 
 mod data;
@@ -37,11 +35,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (
-                system_update_ground,
-                system_update_cursor,
-                system_update_cursor_collisions,
-            ),
+            (system_update_cursor, system_update_cursor_collisions),
         )
         .run();
 }

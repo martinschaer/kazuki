@@ -3,24 +3,9 @@ use bevy::{
     render::mesh::{Mesh, VertexAttributeValues},
 };
 use bevy_rapier3d::geometry::Collider;
-use kazuki::ground::update_ground;
+use kazuki::ground::move_selected_vertices;
 
-use crate::data::{Cursor, Ground, GroundParams};
-
-pub fn system_update_ground(
-    time: Res<Time>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mesh_query: Query<&Handle<Mesh>, With<Ground>>,
-    res_ground_params: Res<GroundParams>,
-) {
-    let mesh_handle = mesh_query.get_single().expect("Query not successful");
-    let mesh = meshes.get_mut(mesh_handle).unwrap();
-    update_ground(
-        mesh,
-        time.elapsed_seconds(),
-        &res_ground_params.permutation_table,
-    );
-}
+use crate::data::{Cursor, Ground};
 
 pub fn system_update_cursor(
     camera_query: Query<(&Camera, &GlobalTransform)>,
@@ -60,11 +45,12 @@ pub fn system_update_cursor_collisions(
     mut meshes: ResMut<Assets<Mesh>>,
     cursor_query: Query<(&Collider, &Transform), With<Cursor>>,
     ground_query: Query<&Handle<Mesh>, With<Ground>>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
 ) {
     let (cursor_collider, transform) = cursor_query.single();
 
     let ground_handle = ground_query.single();
-    let ground_mesh = meshes.get_mut(ground_handle).unwrap();
+    let mut ground_mesh = meshes.get_mut(ground_handle).unwrap();
     let ground_vertices = ground_mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
 
     let mut vertices_intersected = Vec::new();
@@ -86,11 +72,19 @@ pub fn system_update_cursor_collisions(
 
     let ground_vertices_color = ground_mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR).unwrap();
     if let VertexAttributeValues::Float32x4(v) = ground_vertices_color {
-        for i in vertices_intersected {
-            v[i] = [0.2, 0.2, 0.2, 0.2];
+        for i in &vertices_intersected {
+            v[*i] = [0.2, 0.2, 0.2, 0.2];
         }
         for i in vertices_not_intersected {
             v[i] = [1., 1., 1., 1.];
         }
+    }
+
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+        move_selected_vertices(
+            &mut ground_mesh,
+            &vertices_intersected,
+            Vec3::new(0., 0.1, 0.),
+        );
     }
 }
