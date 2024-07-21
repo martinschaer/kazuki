@@ -75,83 +75,101 @@ pub fn build_ground(width: u32, height: u32, cols: u32, rows: u32) -> Mesh {
 
 pub fn move_selected_vertices(mesh: &mut Mesh, selected: &Vec<usize>, translation: Vec3) {
     let indices = mesh.indices().unwrap().clone();
-    let mut normals = vec![];
-
     let vertices = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION);
-    if let Some(vertices) = vertices {
-        if let VertexAttributeValues::Float32x3(v) = vertices {
-            for (i, vertex) in v.iter_mut().enumerate() {
-                if selected.contains(&i) {
-                    vertex[0] += translation.x;
-                    vertex[1] += translation.y;
-                    vertex[2] += translation.z;
-                }
-            }
-            if let Indices::U32(indices) = indices {
-                // TODO: calculate normals only for the selected vertices
-                normals = calculate_normals(v, &indices);
-            }
+    if let Some(VertexAttributeValues::Float32x3(vertices)) = vertices {
+        for selected in selected.iter() {
+            let vertex = &mut vertices[*selected];
+            vertex[0] += translation.x;
+            vertex[1] += translation.y;
+            vertex[2] += translation.z;
         }
     }
 
     // update normals
-    if let Some(VertexAttributeValues::Float32x3(n)) = mesh.attribute_mut(Mesh::ATTRIBUTE_NORMAL) {
-        *n = normals
-            .iter()
-            .map(|n| [n[0] as f32, n[1] as f32, n[2] as f32])
-            .collect();
+    let vertices = mesh.attribute(Mesh::ATTRIBUTE_POSITION).cloned();
+    let normals = mesh.attribute_mut(Mesh::ATTRIBUTE_NORMAL);
+    if let (
+        Some(VertexAttributeValues::Float32x3(normals)),
+        Some(VertexAttributeValues::Float32x3(vertices)),
+        Indices::U32(indices),
+    ) = (normals, vertices, indices)
+    {
+        calculate_normals(normals, &vertices, &indices, Some(selected));
     }
 }
 
 pub fn update_ground(mesh: &mut Mesh, t: f32, perm_table: &PermutationTable) {
     let indices = mesh.indices().unwrap().clone();
     let vertices = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION);
-    let mut normals = vec![];
-    if let Some(vertices) = vertices {
-        if let VertexAttributeValues::Float32x3(v) = vertices {
-            for vertex in v.iter_mut() {
-                let x = vertex[0];
-                let z = vertex[2];
-                let noise = perlin_2d(Vector2::new((x - t) as f64, z as f64), perm_table);
-                vertex[1] = noise as f32 * 0.5;
-            }
-            if let Indices::U32(indices) = indices {
-                normals = calculate_normals(v, &indices);
-            }
+    if let Some(VertexAttributeValues::Float32x3(vertices)) = vertices {
+        for vertex in vertices.iter_mut() {
+            let x = vertex[0];
+            let z = vertex[2];
+            let noise = perlin_2d(Vector2::new((x - t) as f64, z as f64), perm_table);
+            vertex[1] = noise as f32 * 0.5;
         }
     }
-    if let Some(VertexAttributeValues::Float32x3(n)) = mesh.attribute_mut(Mesh::ATTRIBUTE_NORMAL) {
-        *n = normals.iter().map(|x| [x.x, x.y, x.z]).collect();
+    let vertices = mesh.attribute(Mesh::ATTRIBUTE_POSITION).cloned();
+    let normals = mesh.attribute_mut(Mesh::ATTRIBUTE_NORMAL);
+    if let (
+        Some(VertexAttributeValues::Float32x3(normals)),
+        Some(VertexAttributeValues::Float32x3(vertices)),
+    ) = (normals, vertices)
+    {
+        if let Indices::U32(indices) = indices {
+            calculate_normals(normals, &vertices, &indices, None);
+        }
     }
 }
 
-fn calculate_normals(vertices: &Vec<[f32; 3]>, indices: &Vec<u32>) -> Vec<Vec3> {
-    let mut normals = vec![Vec3::ZERO; vertices.len()];
+fn recalculate_tri_normal(
+    i0: usize,
+    i1: usize,
+    i2: usize,
+    vertices: &Vec<[f32; 3]>,
+    normals: &mut Vec<[f32; 3]>,
+) {
+    let v0: Vec3 = vertices[i0].into();
+    let v1: Vec3 = vertices[i1].into();
+    let v2: Vec3 = vertices[i2].into();
 
-    for chunk in indices.chunks(3) {
-        let i0 = chunk[0] as usize;
-        let i1 = chunk[1] as usize;
-        let i2 = chunk[2] as usize;
+    let edge1 = v1 - v0;
+    let edge2 = v2 - v0;
 
-        let v0: Vec3 = vertices[i0].into();
-        let v1: Vec3 = vertices[i1].into();
-        let v2: Vec3 = vertices[i2].into();
+    let normal = edge1.cross(edge2).normalize().into();
 
-        let edge1 = v1 - v0;
-        let edge2 = v2 - v0;
+    normals[i0] = normal;
+    normals[i1] = normal;
+    normals[i2] = normal;
+}
 
-        let normal = edge1.cross(edge2).normalize();
-
-        normals[i0] += normal;
-        normals[i1] += normal;
-        normals[i2] += normal;
+fn calculate_normals(
+    normals: &mut Vec<[f32; 3]>,
+    vertices: &Vec<[f32; 3]>,
+    indices: &Vec<u32>,
+    selected: Option<&Vec<usize>>,
+) {
+    match selected {
+        None => {
+            for chunk in indices.chunks(3) {
+                let i0 = chunk[0] as usize;
+                let i1 = chunk[1] as usize;
+                let i2 = chunk[2] as usize;
+                recalculate_tri_normal(i0, i1, i2, vertices, normals);
+            }
+        }
+        Some(selected) => {
+            for (pos, index) in indices.iter().enumerate() {
+                if selected.iter().find(|x| **x == *index as usize).is_some() {
+                    let offset = pos % 3;
+                    let i0 = indices[pos - offset] as usize;
+                    let i1 = indices[pos - offset + 1] as usize;
+                    let i2 = indices[pos - offset + 2] as usize;
+                    recalculate_tri_normal(i0, i1, i2, vertices, normals);
+                }
+            }
+        }
     }
-
-    for normal in &mut normals {
-        *normal = normal.normalize();
-    }
-
-    normals
 }
 
 #[cfg(test)]
