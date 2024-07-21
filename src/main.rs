@@ -13,7 +13,6 @@ use scenes::terrain::{
 use setup::setup;
 
 mod data;
-mod ground;
 mod scenes;
 mod setup;
 

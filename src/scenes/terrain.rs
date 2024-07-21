@@ -3,11 +3,9 @@ use bevy::{
     render::mesh::{Mesh, VertexAttributeValues},
 };
 use bevy_rapier3d::geometry::Collider;
+use kazuki::ground::update_ground;
 
-use crate::{
-    data::{Cursor, Ground, GroundParams},
-    ground::update_ground,
-};
+use crate::data::{Cursor, Ground, GroundParams};
 
 pub fn system_update_ground(
     time: Res<Time>,

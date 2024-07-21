@@ -1,12 +1,10 @@
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::camera::Exposure};
 use bevy_rapier3d::geometry::{Collider, Sensor};
+use kazuki::ground::build_ground;
 use noise::permutationtable::PermutationTable;
 use std::f32::consts::PI;
 
-use crate::{
-    data::{Cursor, Ground, GroundParams, Parameters},
-    ground::build_ground,
-};
+use crate::data::{Cursor, Ground, GroundParams, Parameters};
 
 pub fn setup(
     mut commands: Commands,
