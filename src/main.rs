@@ -1,13 +1,17 @@
 use bevy::{
     input::common_conditions::input_toggle_active,
     pbr::{
-        wireframe::{Wireframe, WireframeConfig, WireframePlugin},
+        wireframe::{WireframeConfig, WireframePlugin},
         CascadeShadowConfigBuilder,
     },
     prelude::*,
-    render::camera::{Exposure, PhysicalCameraParameters},
+    render::{
+        camera::{Exposure, PhysicalCameraParameters},
+        mesh::VertexAttributeValues,
+    },
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_rapier3d::geometry::{Collider, Sensor};
 use noise::permutationtable::PermutationTable;
 use std::f32::consts::PI;
 
@@ -48,7 +52,14 @@ fn main() {
             default_color: Color::WHITE.into(),
         })
         .add_systems(Startup, setup)
-        .add_systems(Update, (system_update_ground, system_update_cursor))
+        .add_systems(
+            Update,
+            (
+                system_update_ground,
+                system_update_cursor,
+                system_update_cursor_collisions,
+            ),
+        )
         .run();
 }
 
@@ -66,14 +77,14 @@ fn setup(
     // ground
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(build_ground(15, 15, 200, 200)),
+            mesh: meshes.add(build_ground(20, 20, 200, 200)),
             // material: materials.add(Color::srgb_u8(0, 125, 125)),
             material: materials.add(StandardMaterial {
                 base_color: Color::srgb_u8(20, 211, 88),
                 perceptual_roughness: 1.0,
                 ..default()
             }),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()
         },
         // Wireframe,
@@ -133,13 +144,16 @@ fn setup(
 
     // sphere
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(Sphere::default().mesh().ico(3).unwrap())),
-            material: materials.add(Color::srgba_u8(0, 0, 0, 65)),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
-            ..default()
-        },
-        Wireframe,
+        // PbrBundle {
+        //     mesh: meshes.add(Mesh::from(Sphere::new(1.).mesh().ico(1).unwrap())),
+        //     material: materials.add(Color::srgba_u8(0, 0, 0, 0)),
+        //     transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        //     ..default()
+        // },
+        Transform::from_xyz(0.0, 0.5, 0.0),
+        Collider::ball(1.),
+        Sensor,
+        // Wireframe,
         Cursor,
     ));
 }
@@ -191,4 +205,43 @@ fn system_update_cursor(
 
     // Update the cursor's position.
     cursor.translation = point;
+}
+
+fn system_update_cursor_collisions(
+    mut meshes: ResMut<Assets<Mesh>>,
+    cursor_query: Query<(&Collider, &Transform), With<Cursor>>,
+    ground_query: Query<&Handle<Mesh>, With<Ground>>,
+) {
+    let (cursor_collider, transform) = cursor_query.single();
+
+    let ground_handle = ground_query.single();
+    let ground_mesh = meshes.get_mut(ground_handle).unwrap();
+    let ground_vertices = ground_mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
+
+    let mut vertices_intersected = Vec::new();
+    let mut vertices_not_intersected = Vec::new();
+
+    if let VertexAttributeValues::Float32x3(v) = ground_vertices {
+        for (i, vertex) in v.iter().enumerate() {
+            if cursor_collider.contains_point(
+                transform.translation,
+                transform.rotation,
+                Vec3::from(vertex.clone()),
+            ) {
+                vertices_intersected.push(i);
+            } else {
+                vertices_not_intersected.push(i);
+            }
+        }
+    }
+
+    let ground_vertices_color = ground_mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR).unwrap();
+    if let VertexAttributeValues::Float32x4(v) = ground_vertices_color {
+        for i in vertices_intersected {
+            v[i] = [0., 1., 0.8, 0.];
+        }
+        for i in vertices_not_intersected {
+            v[i] = [1., 0.2, 0., 0.];
+        }
+    }
 }

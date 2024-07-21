@@ -58,6 +58,9 @@ pub fn build_ground(width: u32, height: u32, cols: u32, rows: u32) -> Mesh {
         .collect::<Vec<[f32; 2]>>();
     assert_eq!(uvs.len(), vertices.len(), "uvs.len()");
 
+    // vertex colors
+    let colors = vec![[0., 0., 0., 0.]; vertices.len()];
+
     // mesh
     Mesh::new(
         PrimitiveTopology::TriangleList,
@@ -66,6 +69,7 @@ pub fn build_ground(width: u32, height: u32, cols: u32, rows: u32) -> Mesh {
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
     .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
     .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
     .with_inserted_indices(Indices::U32(indices))
 }
 

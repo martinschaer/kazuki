@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.14.0", features = ["dynamic_linking"] }
 bevy-inspector-egui = "0.25.1"
+bevy_rapier3d = { version = "0.27.0", default-features = false, features = ["dim3", "async-collider"] }
 log = { version = "*", features = [
     "max_level_debug",
     "release_max_level_warn",
